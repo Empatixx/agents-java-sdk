@@ -8,6 +8,8 @@ import cz.krokviak.agents.exception.MaxTurnsExceededException;
 import cz.krokviak.agents.exception.OutputGuardrailTrippedException;
 import cz.krokviak.agents.guardrail.*;
 import cz.krokviak.agents.handoff.Handoff;
+import cz.krokviak.agents.mcp.MCPConfig;
+import cz.krokviak.agents.mcp.MCPServer;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.tool.*;
 import cz.krokviak.agents.tracing.Span;
@@ -35,6 +37,9 @@ public final class AgentLoop {
         List<RunItem> allItems = new ArrayList<>();
         int turns = 0;
 
+        // Resolve MCP tools from the agent's MCP servers
+        List<MCPTool> mcpTools = resolveMCPTools(currentAgent);
+
         // Run input guardrails in parallel before starting the loop
         runInputGuardrails(currentAgent, ctx, input);
 
@@ -45,7 +50,7 @@ public final class AgentLoop {
 
             // Build LLM context
             String systemPrompt = currentAgent.resolveInstructions(ctx);
-            List<ToolDefinition> toolDefs = buildToolDefinitions(currentAgent);
+            List<ToolDefinition> toolDefs = buildToolDefinitions(currentAgent, mcpTools);
             LlmContext llmCtx = new LlmContext(systemPrompt, List.copyOf(messages),
                 toolDefs, currentAgent.outputType(), currentAgent.modelSettings());
 
@@ -110,7 +115,7 @@ public final class AgentLoop {
                                 }
                             }
                             // Execute tool
-                            ToolOutput toolOutput = executeTool(currentAgent, toolCall, ctx);
+                            ToolOutput toolOutput = executeTool(currentAgent, toolCall, ctx, mcpTools);
                             // Check tool output guardrails
                             ToolOutputData toolOutputData = new ToolOutputData(toolCall.name(), toolOutput);
                             for (ToolOutputGuardrail<T> guard : currentAgent.toolOutputGuardrails()) {
@@ -145,17 +150,24 @@ public final class AgentLoop {
         }
 
         } // close agentSpan
+        finally {
+            closeMCPServers(agent);
+        }
 
         throw new MaxTurnsExceededException(maxTurns);
     }
 
-    private static <T> List<ToolDefinition> buildToolDefinitions(Agent<T> agent) {
+    private static <T> List<ToolDefinition> buildToolDefinitions(Agent<T> agent, List<MCPTool> mcpTools) {
         List<ToolDefinition> defs = new ArrayList<>();
         for (Tool tool : agent.tools()) {
             if (!tool.isEnabled()) continue;
             if (tool instanceof FunctionToolImpl ft) {
                 defs.add(ft.definition());
             }
+        }
+        // Add MCP tool definitions
+        for (MCPTool mcpTool : mcpTools) {
+            defs.add(mcpTool.definition());
         }
         for (Handoff<T> handoff : agent.handoffs()) {
             defs.add(new ToolDefinition(
@@ -203,7 +215,8 @@ public final class AgentLoop {
         }
     }
 
-    private static <T> ToolOutput executeTool(Agent<T> agent, ModelResponse.OutputItem.ToolCallRequest toolCall, RunContext<T> ctx) {
+    private static <T> ToolOutput executeTool(Agent<T> agent, ModelResponse.OutputItem.ToolCallRequest toolCall,
+                                              RunContext<T> ctx, List<MCPTool> mcpTools) {
         for (Tool tool : agent.tools()) {
             if (tool.name().equals(toolCall.name()) && tool instanceof FunctionToolImpl ft) {
                 try (Span span = Tracing.functionSpan(tool.name())) {
@@ -212,6 +225,60 @@ public final class AgentLoop {
                 }
             }
         }
+        // Check MCP tools
+        for (MCPTool mcpTool : mcpTools) {
+            if (mcpTool.name().equals(toolCall.name())) {
+                try (Span span = Tracing.functionSpan(mcpTool.name())) {
+                    return mcpTool.execute(toolCall.arguments());
+                } catch (Exception e) {
+                    return ToolOutput.text("MCP tool error: " + e.getMessage());
+                }
+            }
+        }
         return ToolOutput.text("Error: unknown tool " + toolCall.name());
+    }
+
+    /**
+     * Resolve MCP tools from the agent's MCP servers.
+     * Connects each server, lists tools, filters by MCPConfig, wraps as MCPTool.
+     */
+    private static <T> List<MCPTool> resolveMCPTools(Agent<T> agent) {
+        if (agent.mcpServers() == null || agent.mcpServers().isEmpty()) {
+            return List.of();
+        }
+        MCPConfig config = agent.mcpConfig() != null ? agent.mcpConfig() : MCPConfig.defaults();
+        List<MCPTool> mcpTools = new ArrayList<>();
+
+        for (MCPServer server : agent.mcpServers()) {
+            try {
+                server.connect();
+                List<ToolDefinition> serverTools = server.listTools();
+                for (ToolDefinition toolDef : serverTools) {
+                    if (config.isToolAllowed(toolDef.name())) {
+                        mcpTools.add(new MCPTool(toolDef, server));
+                    }
+                }
+            } catch (Exception e) {
+                if ("raise".equals(config.errorHandling())) {
+                    throw new RuntimeException("Failed to connect to MCP server: " + e.getMessage(), e);
+                }
+                // "ignore" — skip this server
+            }
+        }
+        return mcpTools;
+    }
+
+    /**
+     * Close all MCP servers attached to the agent.
+     */
+    private static <T> void closeMCPServers(Agent<T> agent) {
+        if (agent.mcpServers() == null) return;
+        for (MCPServer server : agent.mcpServers()) {
+            try {
+                server.close();
+            } catch (Exception e) {
+                // Best effort cleanup
+            }
+        }
     }
 }

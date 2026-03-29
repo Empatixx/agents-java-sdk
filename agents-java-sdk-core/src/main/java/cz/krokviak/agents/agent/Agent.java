@@ -7,6 +7,8 @@ import cz.krokviak.agents.guardrail.ToolInputGuardrail;
 import cz.krokviak.agents.guardrail.ToolOutputGuardrail;
 import cz.krokviak.agents.handoff.Handoff;
 import cz.krokviak.agents.hook.AgentHooks;
+import cz.krokviak.agents.mcp.MCPConfig;
+import cz.krokviak.agents.mcp.MCPServer;
 import cz.krokviak.agents.model.ModelSettings;
 import cz.krokviak.agents.tool.AgentTool;
 import cz.krokviak.agents.tool.Tool;
@@ -31,6 +33,8 @@ public final class Agent<TContext> {
     private final AgentHooks<TContext> hooks;
     private final ToolUseBehavior toolUseBehavior;
     private final String handoffDescription;
+    private final List<MCPServer> mcpServers;
+    private final MCPConfig mcpConfig;
 
     Agent(String name, String instructions,
           BiFunction<RunContext<TContext>, Agent<TContext>, String> dynamicInstructions,
@@ -41,7 +45,8 @@ public final class Agent<TContext> {
           List<ToolInputGuardrail<TContext>> toolInputGuardrails,
           List<ToolOutputGuardrail<TContext>> toolOutputGuardrails,
           Class<?> outputType, AgentHooks<TContext> hooks,
-          ToolUseBehavior toolUseBehavior, String handoffDescription) {
+          ToolUseBehavior toolUseBehavior, String handoffDescription,
+          List<MCPServer> mcpServers, MCPConfig mcpConfig) {
         this.name = name;
         this.instructions = instructions;
         this.dynamicInstructions = dynamicInstructions;
@@ -57,6 +62,8 @@ public final class Agent<TContext> {
         this.hooks = hooks;
         this.toolUseBehavior = toolUseBehavior;
         this.handoffDescription = handoffDescription;
+        this.mcpServers = Collections.unmodifiableList(mcpServers);
+        this.mcpConfig = mcpConfig;
     }
 
     public static <T> AgentBuilder<T> builder(String name) {
@@ -79,7 +86,9 @@ public final class Agent<TContext> {
             .outputType(outputType)
             .hooks(hooks)
             .toolUseBehavior(toolUseBehavior)
-            .handoffDescription(handoffDescription);
+            .handoffDescription(handoffDescription)
+            .mcpServers(mcpServers)
+            .mcpConfig(mcpConfig);
     }
 
     public Tool asTool(String description) {
@@ -109,4 +118,6 @@ public final class Agent<TContext> {
     public AgentHooks<TContext> hooks() { return hooks; }
     public ToolUseBehavior toolUseBehavior() { return toolUseBehavior; }
     public String handoffDescription() { return handoffDescription; }
+    public List<MCPServer> mcpServers() { return mcpServers; }
+    public MCPConfig mcpConfig() { return mcpConfig; }
 }

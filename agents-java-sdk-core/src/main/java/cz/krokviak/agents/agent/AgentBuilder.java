@@ -7,6 +7,8 @@ import cz.krokviak.agents.guardrail.ToolInputGuardrail;
 import cz.krokviak.agents.guardrail.ToolOutputGuardrail;
 import cz.krokviak.agents.handoff.Handoff;
 import cz.krokviak.agents.hook.AgentHooks;
+import cz.krokviak.agents.mcp.MCPConfig;
+import cz.krokviak.agents.mcp.MCPServer;
 import cz.krokviak.agents.model.ModelSettings;
 import cz.krokviak.agents.tool.Tool;
 
@@ -30,6 +32,8 @@ public final class AgentBuilder<TContext> {
     private AgentHooks<TContext> hooks;
     private ToolUseBehavior toolUseBehavior = ToolUseBehavior.RUN_LLM_AGAIN;
     private String handoffDescription;
+    private List<MCPServer> mcpServers = new ArrayList<>();
+    private MCPConfig mcpConfig;
 
     AgentBuilder() {}
 
@@ -119,12 +123,28 @@ public final class AgentBuilder<TContext> {
         return this;
     }
 
+    public AgentBuilder<TContext> mcpServers(List<MCPServer> mcpServers) {
+        this.mcpServers = new ArrayList<>(mcpServers);
+        return this;
+    }
+
+    public AgentBuilder<TContext> addMcpServer(MCPServer server) {
+        this.mcpServers.add(server);
+        return this;
+    }
+
+    public AgentBuilder<TContext> mcpConfig(MCPConfig mcpConfig) {
+        this.mcpConfig = mcpConfig;
+        return this;
+    }
+
     public Agent<TContext> build() {
         if (name == null || name.isBlank()) {
             throw new IllegalStateException("Agent name is required");
         }
         return new Agent<>(name, instructions, dynamicInstructions, model, modelSettings,
             tools, handoffs, inputGuardrails, outputGuardrails, toolInputGuardrails, toolOutputGuardrails,
-            outputType, hooks, toolUseBehavior, handoffDescription);
+            outputType, hooks, toolUseBehavior, handoffDescription,
+            mcpServers, mcpConfig);
     }
 }
