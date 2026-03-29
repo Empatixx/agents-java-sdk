@@ -3,6 +3,8 @@ package cz.krokviak.agents.agent;
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.guardrail.InputGuardrail;
 import cz.krokviak.agents.guardrail.OutputGuardrail;
+import cz.krokviak.agents.guardrail.ToolInputGuardrail;
+import cz.krokviak.agents.guardrail.ToolOutputGuardrail;
 import cz.krokviak.agents.handoff.Handoff;
 import cz.krokviak.agents.hook.AgentHooks;
 import cz.krokviak.agents.model.ModelSettings;
@@ -23,6 +25,8 @@ public final class Agent<TContext> {
     private final List<Handoff<TContext>> handoffs;
     private final List<InputGuardrail<TContext>> inputGuardrails;
     private final List<OutputGuardrail<TContext>> outputGuardrails;
+    private final List<ToolInputGuardrail<TContext>> toolInputGuardrails;
+    private final List<ToolOutputGuardrail<TContext>> toolOutputGuardrails;
     private final Class<?> outputType;
     private final AgentHooks<TContext> hooks;
     private final ToolUseBehavior toolUseBehavior;
@@ -34,6 +38,8 @@ public final class Agent<TContext> {
           List<Tool> tools, List<Handoff<TContext>> handoffs,
           List<InputGuardrail<TContext>> inputGuardrails,
           List<OutputGuardrail<TContext>> outputGuardrails,
+          List<ToolInputGuardrail<TContext>> toolInputGuardrails,
+          List<ToolOutputGuardrail<TContext>> toolOutputGuardrails,
           Class<?> outputType, AgentHooks<TContext> hooks,
           ToolUseBehavior toolUseBehavior, String handoffDescription) {
         this.name = name;
@@ -45,6 +51,8 @@ public final class Agent<TContext> {
         this.handoffs = Collections.unmodifiableList(handoffs);
         this.inputGuardrails = Collections.unmodifiableList(inputGuardrails);
         this.outputGuardrails = Collections.unmodifiableList(outputGuardrails);
+        this.toolInputGuardrails = Collections.unmodifiableList(toolInputGuardrails);
+        this.toolOutputGuardrails = Collections.unmodifiableList(toolOutputGuardrails);
         this.outputType = outputType;
         this.hooks = hooks;
         this.toolUseBehavior = toolUseBehavior;
@@ -66,6 +74,8 @@ public final class Agent<TContext> {
             .handoffs(handoffs)
             .inputGuardrails(inputGuardrails)
             .outputGuardrails(outputGuardrails)
+            .toolInputGuardrails(toolInputGuardrails)
+            .toolOutputGuardrails(toolOutputGuardrails)
             .outputType(outputType)
             .hooks(hooks)
             .toolUseBehavior(toolUseBehavior)
@@ -93,6 +103,8 @@ public final class Agent<TContext> {
     public List<Handoff<TContext>> handoffs() { return handoffs; }
     public List<InputGuardrail<TContext>> inputGuardrails() { return inputGuardrails; }
     public List<OutputGuardrail<TContext>> outputGuardrails() { return outputGuardrails; }
+    public List<ToolInputGuardrail<TContext>> toolInputGuardrails() { return toolInputGuardrails; }
+    public List<ToolOutputGuardrail<TContext>> toolOutputGuardrails() { return toolOutputGuardrails; }
     public Class<?> outputType() { return outputType; }
     public AgentHooks<TContext> hooks() { return hooks; }
     public ToolUseBehavior toolUseBehavior() { return toolUseBehavior; }

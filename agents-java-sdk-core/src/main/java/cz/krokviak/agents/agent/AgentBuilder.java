@@ -3,6 +3,8 @@ package cz.krokviak.agents.agent;
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.guardrail.InputGuardrail;
 import cz.krokviak.agents.guardrail.OutputGuardrail;
+import cz.krokviak.agents.guardrail.ToolInputGuardrail;
+import cz.krokviak.agents.guardrail.ToolOutputGuardrail;
 import cz.krokviak.agents.handoff.Handoff;
 import cz.krokviak.agents.hook.AgentHooks;
 import cz.krokviak.agents.model.ModelSettings;
@@ -22,6 +24,8 @@ public final class AgentBuilder<TContext> {
     private List<Handoff<TContext>> handoffs = new ArrayList<>();
     private List<InputGuardrail<TContext>> inputGuardrails = new ArrayList<>();
     private List<OutputGuardrail<TContext>> outputGuardrails = new ArrayList<>();
+    private List<ToolInputGuardrail<TContext>> toolInputGuardrails = new ArrayList<>();
+    private List<ToolOutputGuardrail<TContext>> toolOutputGuardrails = new ArrayList<>();
     private Class<?> outputType;
     private AgentHooks<TContext> hooks;
     private ToolUseBehavior toolUseBehavior = ToolUseBehavior.RUN_LLM_AGAIN;
@@ -85,6 +89,16 @@ public final class AgentBuilder<TContext> {
         return this;
     }
 
+    public AgentBuilder<TContext> toolInputGuardrails(List<ToolInputGuardrail<TContext>> guardrails) {
+        this.toolInputGuardrails = new ArrayList<>(guardrails);
+        return this;
+    }
+
+    public AgentBuilder<TContext> toolOutputGuardrails(List<ToolOutputGuardrail<TContext>> guardrails) {
+        this.toolOutputGuardrails = new ArrayList<>(guardrails);
+        return this;
+    }
+
     public AgentBuilder<TContext> outputType(Class<?> outputType) {
         this.outputType = outputType;
         return this;
@@ -110,7 +124,7 @@ public final class AgentBuilder<TContext> {
             throw new IllegalStateException("Agent name is required");
         }
         return new Agent<>(name, instructions, dynamicInstructions, model, modelSettings,
-            tools, handoffs, inputGuardrails, outputGuardrails, outputType, hooks,
-            toolUseBehavior, handoffDescription);
+            tools, handoffs, inputGuardrails, outputGuardrails, toolInputGuardrails, toolOutputGuardrails,
+            outputType, hooks, toolUseBehavior, handoffDescription);
     }
 }

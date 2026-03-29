@@ -3,8 +3,10 @@ package cz.krokviak.agents.runner;
 import cz.krokviak.agents.agent.Agent;
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.context.ToolContext;
+import cz.krokviak.agents.exception.InputGuardrailTrippedException;
 import cz.krokviak.agents.exception.MaxTurnsExceededException;
-import cz.krokviak.agents.guardrail.GuardrailResults;
+import cz.krokviak.agents.exception.OutputGuardrailTrippedException;
+import cz.krokviak.agents.guardrail.*;
 import cz.krokviak.agents.handoff.Handoff;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.tool.*;
@@ -12,6 +14,9 @@ import cz.krokviak.agents.tracing.Span;
 import cz.krokviak.agents.tracing.Tracing;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class AgentLoop {
 
@@ -29,6 +34,9 @@ public final class AgentLoop {
         List<InputItem> messages = new ArrayList<>(input);
         List<RunItem> allItems = new ArrayList<>();
         int turns = 0;
+
+        // Run input guardrails in parallel before starting the loop
+        runInputGuardrails(currentAgent, ctx, input);
 
         while (turns < maxTurns) {
             turns++;
@@ -85,8 +93,24 @@ public final class AgentLoop {
                                 messages = new ArrayList<>(handoff.inputFilter().apply(messages));
                             }
                         } else {
+                            // Check tool input guardrails
+                            ToolCallData toolCallData = new ToolCallData(toolCall.name(), toolCall.arguments());
+                            for (ToolInputGuardrail<T> guard : currentAgent.toolInputGuardrails()) {
+                                GuardrailResult r = guard.execute(ctx, toolCallData);
+                                if (r.tripped()) {
+                                    throw new InputGuardrailTrippedException(guard.name(), r.reason());
+                                }
+                            }
                             // Execute tool
                             ToolOutput toolOutput = executeTool(currentAgent, toolCall, ctx);
+                            // Check tool output guardrails
+                            ToolOutputData toolOutputData = new ToolOutputData(toolCall.name(), toolOutput);
+                            for (ToolOutputGuardrail<T> guard : currentAgent.toolOutputGuardrails()) {
+                                GuardrailResult r = guard.execute(ctx, toolOutputData);
+                                if (r.tripped()) {
+                                    throw new OutputGuardrailTrippedException(guard.name(), r.reason());
+                                }
+                            }
                             String outputText = toolOutput instanceof ToolOutput.Text t ? t.content() : "[non-text output]";
                             allItems.add(new RunItem.ToolOutputItem(currentAgent.name(),
                                 toolCall.id(), toolCall.name(), toolOutput));
@@ -138,6 +162,28 @@ public final class AgentLoop {
             }
         }
         return null;
+    }
+
+    private static <T> void runInputGuardrails(Agent<T> agent, RunContext<T> ctx, List<InputItem> input) {
+        if (agent.inputGuardrails().isEmpty()) return;
+        GuardrailInputData data = new GuardrailInputData(input);
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<CompletableFuture<GuardrailResult>> futures = agent.inputGuardrails().stream()
+                .map(g -> CompletableFuture.supplyAsync(() -> g.execute(ctx, data), executor))
+                .toList();
+            // Collect all results
+            List<GuardrailResult> results = futures.stream()
+                .map(CompletableFuture::join)
+                .toList();
+            // Check each guardrail result in order
+            for (int i = 0; i < results.size(); i++) {
+                GuardrailResult result = results.get(i);
+                if (result.tripped()) {
+                    throw new InputGuardrailTrippedException(
+                        agent.inputGuardrails().get(i).name(), result.reason());
+                }
+            }
+        }
     }
 
     private static <T> ToolOutput executeTool(Agent<T> agent, ModelResponse.OutputItem.ToolCallRequest toolCall, RunContext<T> ctx) {
