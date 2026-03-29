@@ -1,11 +1,9 @@
 package cz.krokviak.agents.model;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import cz.krokviak.agents.http.AgentHttpClient;
 import cz.krokviak.agents.http.SseParser;
+import cz.krokviak.agents.model.dto.ChatCompletionsDto;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.tool.ToolDefinition;
 
@@ -29,10 +27,11 @@ public class OpenAIChatCompletionsModel implements Model {
 
     @Override
     public ModelResponse call(LlmContext context, ModelSettings settings) {
-        ObjectNode body = buildRequestBody(context, settings, false);
+        ChatCompletionsDto.Request body = buildRequestBody(context, settings, false);
 
         try {
-            JsonNode response = httpClient.post("/chat/completions", body, JsonNode.class);
+            ChatCompletionsDto.Response response = httpClient.post(
+                "/chat/completions", body, ChatCompletionsDto.Response.class);
             return parseResponse(response);
         } catch (Exception e) {
             throw new RuntimeException("OpenAI Chat Completions API call failed", e);
@@ -41,133 +40,84 @@ public class OpenAIChatCompletionsModel implements Model {
 
     @Override
     public ModelResponseStream callStreamed(LlmContext context, ModelSettings settings) {
-        ObjectNode body = buildRequestBody(context, settings, true);
+        ChatCompletionsDto.Request body = buildRequestBody(context, settings, true);
         InputStream stream = httpClient.postStream("/chat/completions", body);
         Iterator<SseParser.SseEvent> sseIterator = SseParser.stream(stream);
 
         return new ChatCompletionsResponseStream(sseIterator, mapper);
     }
 
-    private ObjectNode buildRequestBody(LlmContext context, ModelSettings settings, boolean stream) {
-        ObjectNode body = mapper.createObjectNode();
-        body.put("model", modelId);
+    private ChatCompletionsDto.Request buildRequestBody(LlmContext context, ModelSettings settings, boolean stream) {
+        List<ChatCompletionsDto.Message> messages = new ArrayList<>();
 
-        ArrayNode messages = mapper.createArrayNode();
-
-        // System message
         if (context.systemPrompt() != null && !context.systemPrompt().isEmpty()) {
-            ObjectNode sysMsg = mapper.createObjectNode();
-            sysMsg.put("role", "system");
-            sysMsg.put("content", context.systemPrompt());
-            messages.add(sysMsg);
+            messages.add(new ChatCompletionsDto.Message("system", context.systemPrompt(), null, null));
         }
 
-        // Conversation messages
         for (InputItem item : context.messages()) {
             switch (item) {
-                case InputItem.UserMessage msg -> {
-                    ObjectNode m = mapper.createObjectNode();
-                    m.put("role", "user");
-                    m.put("content", msg.content());
-                    messages.add(m);
-                }
+                case InputItem.UserMessage msg ->
+                    messages.add(new ChatCompletionsDto.Message("user", msg.content(), null, null));
                 case InputItem.AssistantMessage msg -> {
-                    ObjectNode m = mapper.createObjectNode();
-                    m.put("role", "assistant");
-                    m.put("content", msg.content());
-                    if (!msg.toolCalls().isEmpty()) {
-                        ArrayNode tc = mapper.createArrayNode();
-                        for (InputItem.ToolCall call : msg.toolCalls()) {
-                            ObjectNode tcNode = mapper.createObjectNode();
-                            tcNode.put("id", call.id());
-                            tcNode.put("type", "function");
-                            ObjectNode fn = mapper.createObjectNode();
-                            fn.put("name", call.name());
-                            try {
-                                fn.put("arguments", mapper.writeValueAsString(call.arguments()));
-                            } catch (Exception e) {
-                                fn.put("arguments", "{}");
-                            }
-                            tcNode.set("function", fn);
-                            tc.add(tcNode);
-                        }
-                        m.set("tool_calls", tc);
-                    }
-                    messages.add(m);
+                    List<ChatCompletionsDto.ToolCallOut> toolCalls = msg.toolCalls().isEmpty() ? null :
+                        msg.toolCalls().stream().map(tc -> new ChatCompletionsDto.ToolCallOut(
+                            tc.id(), "function",
+                            new ChatCompletionsDto.Function(tc.name(), serializeArgs(tc.arguments()))
+                        )).toList();
+                    messages.add(new ChatCompletionsDto.Message("assistant", msg.content(), null, toolCalls));
                 }
-                case InputItem.ToolResult result -> {
-                    ObjectNode m = mapper.createObjectNode();
-                    m.put("role", "tool");
-                    m.put("tool_call_id", result.toolCallId());
-                    m.put("content", result.output());
-                    messages.add(m);
-                }
-                case InputItem.SystemMessage msg -> {
-                    ObjectNode m = mapper.createObjectNode();
-                    m.put("role", "system");
-                    m.put("content", msg.content());
-                    messages.add(m);
-                }
+                case InputItem.ToolResult result ->
+                    messages.add(new ChatCompletionsDto.Message("tool", result.output(), result.toolCallId(), null));
+                case InputItem.SystemMessage msg ->
+                    messages.add(new ChatCompletionsDto.Message("system", msg.content(), null, null));
             }
         }
-        body.set("messages", messages);
 
-        // Tools
-        if (!context.tools().isEmpty()) {
-            ArrayNode tools = mapper.createArrayNode();
-            for (ToolDefinition toolDef : context.tools()) {
-                ObjectNode toolNode = mapper.createObjectNode();
-                toolNode.put("type", "function");
-                ObjectNode fn = mapper.createObjectNode();
-                fn.put("name", toolDef.name());
-                fn.put("description", toolDef.description());
-                fn.set("parameters", mapper.valueToTree(toolDef.parametersSchema()));
-                toolNode.set("function", fn);
-                tools.add(toolNode);
-            }
-            body.set("tools", tools);
-        }
+        List<ChatCompletionsDto.Tool> tools = context.tools().isEmpty() ? null :
+            context.tools().stream().map(td -> new ChatCompletionsDto.Tool(
+                "function",
+                new ChatCompletionsDto.Tool.Function(td.name(), td.description(), td.parametersSchema())
+            )).toList();
 
-        if (settings != null) {
-            if (settings.temperature() != null) body.put("temperature", settings.temperature());
-            if (settings.topP() != null) body.put("top_p", settings.topP());
-            if (settings.maxTokens() != null) body.put("max_tokens", settings.maxTokens());
-        }
-
-        if (stream) body.put("stream", true);
-
-        return body;
+        return new ChatCompletionsDto.Request(
+            modelId, messages, tools,
+            settings != null ? settings.temperature() : null,
+            settings != null ? settings.topP() : null,
+            settings != null ? settings.maxTokens() : null,
+            stream ? Boolean.TRUE : null
+        );
     }
 
-    private ModelResponse parseResponse(JsonNode response) {
-        String id = response.path("id").asText();
+    private String serializeArgs(Map<String, Object> arguments) {
+        try {
+            return mapper.writeValueAsString(arguments);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    private ModelResponse parseResponse(ChatCompletionsDto.Response response) {
+        String id = response.id();
+        int inputTokens = response.usage() != null ? response.usage().promptTokens() : 0;
+        int outputTokens = response.usage() != null ? response.usage().completionTokens() : 0;
+
         List<ModelResponse.OutputItem> outputs = new ArrayList<>();
-        int inputTokens = response.path("usage").path("prompt_tokens").asInt(0);
-        int outputTokens = response.path("usage").path("completion_tokens").asInt(0);
-
-        JsonNode choices = response.path("choices");
-        if (choices.isArray() && !choices.isEmpty()) {
-            JsonNode choice = choices.get(0);
-            JsonNode message = choice.path("message");
-            String content = message.path("content").asText(null);
-
-            if (content != null && !content.isEmpty()) {
-                outputs.add(new ModelResponse.OutputItem.Message(content));
+        if (response.choices() != null && !response.choices().isEmpty()) {
+            ChatCompletionsDto.ResponseMessage message = response.choices().get(0).message();
+            if (message.content() != null && !message.content().isEmpty()) {
+                outputs.add(new ModelResponse.OutputItem.Message(message.content()));
             }
-
-            JsonNode toolCalls = message.path("tool_calls");
-            if (toolCalls.isArray()) {
-                for (JsonNode tc : toolCalls) {
-                    String callId = tc.path("id").asText();
-                    String name = tc.path("function").path("name").asText();
+            if (message.toolCalls() != null) {
+                for (ChatCompletionsDto.ToolCallIn tc : message.toolCalls()) {
+                    Map<String, Object> args;
                     try {
                         @SuppressWarnings("unchecked")
-                        Map<String, Object> args = mapper.readValue(
-                            tc.path("function").path("arguments").asText(), Map.class);
-                        outputs.add(new ModelResponse.OutputItem.ToolCallRequest(callId, name, args));
+                        Map<String, Object> parsed = mapper.readValue(tc.function().arguments(), Map.class);
+                        args = parsed;
                     } catch (Exception e) {
-                        outputs.add(new ModelResponse.OutputItem.ToolCallRequest(callId, name, Map.of()));
+                        args = Map.of();
                     }
+                    outputs.add(new ModelResponse.OutputItem.ToolCallRequest(tc.id(), tc.function().name(), args));
                 }
             }
         }
@@ -193,10 +143,14 @@ public class OpenAIChatCompletionsModel implements Model {
                     SseParser.SseEvent sse = sseIterator.next();
                     if (sse.isDone()) return new Event.Done(null);
                     try {
-                        JsonNode node = mapper.readTree(sse.data());
-                        JsonNode delta = node.path("choices").path(0).path("delta");
-                        String content = delta.path("content").asText(null);
-                        if (content != null) return new Event.TextDelta(content);
+                        ChatCompletionsDto.StreamChunk chunk = mapper.readValue(
+                            sse.data(), ChatCompletionsDto.StreamChunk.class);
+                        if (chunk.choices() != null && !chunk.choices().isEmpty()) {
+                            ChatCompletionsDto.StreamDelta delta = chunk.choices().get(0).delta();
+                            if (delta != null && delta.content() != null) {
+                                return new Event.TextDelta(delta.content());
+                            }
+                        }
                         return new Event.TextDelta("");
                     } catch (Exception e) {
                         return new Event.TextDelta("");

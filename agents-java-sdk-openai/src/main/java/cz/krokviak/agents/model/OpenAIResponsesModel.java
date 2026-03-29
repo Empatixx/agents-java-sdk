@@ -1,11 +1,9 @@
 package cz.krokviak.agents.model;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import cz.krokviak.agents.http.AgentHttpClient;
 import cz.krokviak.agents.http.SseParser;
+import cz.krokviak.agents.model.dto.ResponsesDto;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.tool.ToolDefinition;
 
@@ -29,10 +27,11 @@ public class OpenAIResponsesModel implements Model {
 
     @Override
     public ModelResponse call(LlmContext context, ModelSettings settings) {
-        ObjectNode body = buildRequestBody(context, settings, false);
+        ResponsesDto.Request body = buildRequestBody(context, settings, false);
 
         try {
-            JsonNode response = httpClient.post("/responses", body, JsonNode.class);
+            ResponsesDto.Response response = httpClient.post(
+                "/responses", body, ResponsesDto.Response.class);
             return parseResponse(response);
         } catch (Exception e) {
             throw new RuntimeException("OpenAI Responses API call failed", e);
@@ -41,7 +40,7 @@ public class OpenAIResponsesModel implements Model {
 
     @Override
     public ModelResponseStream callStreamed(LlmContext context, ModelSettings settings) {
-        ObjectNode body = buildRequestBody(context, settings, true);
+        ResponsesDto.Request body = buildRequestBody(context, settings, true);
 
         InputStream stream = httpClient.postStream("/responses", body);
         Iterator<SseParser.SseEvent> sseIterator = SseParser.stream(stream);
@@ -49,118 +48,75 @@ public class OpenAIResponsesModel implements Model {
         return new OpenAIResponseStream(sseIterator, mapper);
     }
 
-    private ObjectNode buildRequestBody(LlmContext context, ModelSettings settings, boolean stream) {
-        ObjectNode body = mapper.createObjectNode();
-        body.put("model", modelId);
+    private ResponsesDto.Request buildRequestBody(LlmContext context, ModelSettings settings, boolean stream) {
+        String instructions = (context.systemPrompt() != null && !context.systemPrompt().isEmpty())
+            ? context.systemPrompt() : null;
 
-        if (context.systemPrompt() != null && !context.systemPrompt().isEmpty()) {
-            body.put("instructions", context.systemPrompt());
-        }
-
-        // Build input array
-        ArrayNode input = mapper.createArrayNode();
+        List<ResponsesDto.InputMessage> input = new ArrayList<>();
         for (InputItem item : context.messages()) {
             switch (item) {
-                case InputItem.UserMessage msg -> {
-                    ObjectNode msgNode = mapper.createObjectNode();
-                    msgNode.put("role", "user");
-                    msgNode.put("content", msg.content());
-                    input.add(msgNode);
-                }
-                case InputItem.AssistantMessage msg -> {
-                    ObjectNode msgNode = mapper.createObjectNode();
-                    msgNode.put("role", "assistant");
-                    msgNode.put("content", msg.content());
-                    input.add(msgNode);
-                }
-                case InputItem.ToolResult result -> {
-                    ObjectNode msgNode = mapper.createObjectNode();
-                    msgNode.put("type", "function_call_output");
-                    msgNode.put("call_id", result.toolCallId());
-                    msgNode.put("output", result.output());
-                    input.add(msgNode);
-                }
-                case InputItem.SystemMessage msg -> {
-                    ObjectNode msgNode = mapper.createObjectNode();
-                    msgNode.put("role", "system");
-                    msgNode.put("content", msg.content());
-                    input.add(msgNode);
-                }
+                case InputItem.UserMessage msg ->
+                    input.add(new ResponsesDto.InputMessage("user", null, msg.content(), null, null));
+                case InputItem.AssistantMessage msg ->
+                    input.add(new ResponsesDto.InputMessage("assistant", null, msg.content(), null, null));
+                case InputItem.ToolResult result ->
+                    input.add(new ResponsesDto.InputMessage(null, "function_call_output", null, result.toolCallId(), result.output()));
+                case InputItem.SystemMessage msg ->
+                    input.add(new ResponsesDto.InputMessage("system", null, msg.content(), null, null));
             }
         }
-        body.set("input", input);
 
-        // Tools
-        if (!context.tools().isEmpty()) {
-            ArrayNode tools = mapper.createArrayNode();
-            for (ToolDefinition toolDef : context.tools()) {
-                ObjectNode toolNode = mapper.createObjectNode();
-                toolNode.put("type", "function");
-                toolNode.put("name", toolDef.name());
-                toolNode.put("description", toolDef.description());
-                toolNode.set("parameters", mapper.valueToTree(toolDef.parametersSchema()));
-                tools.add(toolNode);
-            }
-            body.set("tools", tools);
-        }
+        List<ResponsesDto.Tool> tools = context.tools().isEmpty() ? null :
+            context.tools().stream().map(td -> new ResponsesDto.Tool(
+                "function", td.name(), td.description(), td.parametersSchema()
+            )).toList();
 
-        // Structured output
+        ResponsesDto.TextFormat textFormat = null;
         if (context.outputType() != null) {
-            ObjectNode textFormat = mapper.createObjectNode();
-            textFormat.put("type", "json_schema");
-            ObjectNode schemaNode = mapper.createObjectNode();
-            schemaNode.put("name", context.outputType().getSimpleName());
-            schemaNode.set("schema", mapper.valueToTree(
-                cz.krokviak.agents.output.JsonSchemaGenerator.generate(context.outputType())));
-            schemaNode.put("strict", true);
-            textFormat.set("json_schema", schemaNode);
-            body.set("text", mapper.createObjectNode().set("format", textFormat));
+            Map<String, Object> schema = cz.krokviak.agents.output.JsonSchemaGenerator.generate(context.outputType());
+            textFormat = new ResponsesDto.TextFormat(
+                new ResponsesDto.FormatSpec("json_schema",
+                    new ResponsesDto.JsonSchemaSpec(context.outputType().getSimpleName(), schema, true)));
         }
 
-        // Settings
-        if (settings != null) {
-            if (settings.temperature() != null) body.put("temperature", settings.temperature());
-            if (settings.topP() != null) body.put("top_p", settings.topP());
-            if (settings.maxTokens() != null) body.put("max_output_tokens", settings.maxTokens());
-        }
-
-        if (stream) body.put("stream", true);
-
-        return body;
+        return new ResponsesDto.Request(
+            modelId, instructions, input, tools, textFormat,
+            settings != null ? settings.temperature() : null,
+            settings != null ? settings.topP() : null,
+            settings != null ? settings.maxTokens() : null,
+            stream ? Boolean.TRUE : null
+        );
     }
 
-    private ModelResponse parseResponse(JsonNode response) {
-        String id = response.path("id").asText();
-        List<ModelResponse.OutputItem> outputs = new ArrayList<>();
-        int inputTokens = response.path("usage").path("input_tokens").asInt(0);
-        int outputTokens = response.path("usage").path("output_tokens").asInt(0);
+    private ModelResponse parseResponse(ResponsesDto.Response response) {
+        String id = response.id();
+        int inputTokens = response.usage() != null ? response.usage().inputTokens() : 0;
+        int outputTokens = response.usage() != null ? response.usage().outputTokens() : 0;
 
-        JsonNode outputArray = response.path("output");
-        if (outputArray.isArray()) {
-            for (JsonNode item : outputArray) {
-                String type = item.path("type").asText();
+        List<ModelResponse.OutputItem> outputs = new ArrayList<>();
+        if (response.output() != null) {
+            for (ResponsesDto.OutputItem item : response.output()) {
+                String type = item.type();
                 if ("message".equals(type)) {
                     String content = "";
-                    JsonNode contentArray = item.path("content");
-                    if (contentArray.isArray()) {
-                        for (JsonNode c : contentArray) {
-                            if ("output_text".equals(c.path("type").asText())) {
-                                content = c.path("text").asText();
+                    if (item.content() != null) {
+                        for (ResponsesDto.ContentPart c : item.content()) {
+                            if ("output_text".equals(c.type())) {
+                                content = c.text();
                             }
                         }
                     }
                     outputs.add(new ModelResponse.OutputItem.Message(content));
                 } else if ("function_call".equals(type)) {
-                    String callId = item.path("call_id").asText();
-                    String name = item.path("name").asText();
+                    Map<String, Object> args;
                     try {
                         @SuppressWarnings("unchecked")
-                        Map<String, Object> args = mapper.readValue(
-                            item.path("arguments").asText(), Map.class);
-                        outputs.add(new ModelResponse.OutputItem.ToolCallRequest(callId, name, args));
+                        Map<String, Object> parsed = mapper.readValue(item.arguments(), Map.class);
+                        args = parsed;
                     } catch (Exception e) {
-                        outputs.add(new ModelResponse.OutputItem.ToolCallRequest(callId, name, Map.of()));
+                        args = Map.of();
                     }
+                    outputs.add(new ModelResponse.OutputItem.ToolCallRequest(item.callId(), item.name(), args));
                 }
             }
         }
@@ -188,16 +144,17 @@ public class OpenAIResponsesModel implements Model {
                     SseParser.SseEvent sse = sseIterator.next();
                     if (sse.isDone()) return new Event.Done(null);
                     try {
-                        JsonNode node = mapper.readTree(sse.data());
-                        String type = node.path("type").asText();
+                        ResponsesDto.StreamEvent event = mapper.readValue(
+                            sse.data(), ResponsesDto.StreamEvent.class);
+                        String type = event.type();
                         if ("response.output_text.delta".equals(type)) {
-                            return new Event.TextDelta(node.path("delta").asText());
+                            return new Event.TextDelta(event.delta());
                         }
                         if ("response.function_call_arguments.delta".equals(type)) {
                             return new Event.ToolCallDelta(
-                                node.path("call_id").asText(),
-                                node.path("name").asText(""),
-                                node.path("delta").asText());
+                                event.callId(),
+                                event.name() != null ? event.name() : "",
+                                event.delta());
                         }
                         if ("response.completed".equals(type)) {
                             return new Event.Done(null);
