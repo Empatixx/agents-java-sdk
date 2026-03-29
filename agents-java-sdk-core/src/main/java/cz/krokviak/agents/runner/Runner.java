@@ -41,7 +41,7 @@ public final class Runner {
         RunResult<T> result;
         try (Span span = Tracing.span("agent-run")) {
             span.setAttribute("agent", agent.name());
-            result = AgentLoop.run(agent, allInput, ctx, model, config.maxTurns());
+            result = AgentLoop.run(agent, allInput, ctx, model, config.maxTurns(), config);
         }
 
         // Save to session

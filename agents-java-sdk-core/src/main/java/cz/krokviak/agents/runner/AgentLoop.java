@@ -32,6 +32,18 @@ public final class AgentLoop {
             Model model,
             int maxTurns
     ) {
+        return run(agent, input, ctx, model, maxTurns, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> RunResult<T> run(
+            Agent<T> agent,
+            List<InputItem> input,
+            RunContext<T> ctx,
+            Model model,
+            int maxTurns,
+            RunConfig<T> runConfig
+    ) {
         Agent<T> currentAgent = agent;
         List<InputItem> messages = new ArrayList<>(input);
         List<RunItem> allItems = new ArrayList<>();
@@ -152,6 +164,17 @@ public final class AgentLoop {
         } // close agentSpan
         finally {
             closeMCPServers(agent);
+        }
+
+        // Check if there's an error handler for "max_turns"
+        if (runConfig != null && runConfig.errorHandlers().containsKey("max_turns")) {
+            ErrorHandler<T> handler = runConfig.errorHandlers().get("max_turns");
+            MaxTurnsExceededException ex = new MaxTurnsExceededException(maxTurns);
+            Object handlerResult = handler.handle(ctx, ex);
+            T finalOutput = (T) handlerResult;
+            return new RunResult<>(finalOutput, List.copyOf(allItems),
+                currentAgent, List.copyOf(input), ctx.usage(),
+                List.of(), GuardrailResults.empty());
         }
 
         throw new MaxTurnsExceededException(maxTurns);

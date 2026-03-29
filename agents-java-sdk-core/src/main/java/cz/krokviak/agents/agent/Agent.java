@@ -35,6 +35,8 @@ public final class Agent<TContext> {
     private final String handoffDescription;
     private final List<MCPServer> mcpServers;
     private final MCPConfig mcpConfig;
+    private final Prompt prompt;
+    private final boolean resetToolChoice;
 
     Agent(String name, String instructions,
           BiFunction<RunContext<TContext>, Agent<TContext>, String> dynamicInstructions,
@@ -46,7 +48,8 @@ public final class Agent<TContext> {
           List<ToolOutputGuardrail<TContext>> toolOutputGuardrails,
           Class<?> outputType, AgentHooks<TContext> hooks,
           ToolUseBehavior toolUseBehavior, String handoffDescription,
-          List<MCPServer> mcpServers, MCPConfig mcpConfig) {
+          List<MCPServer> mcpServers, MCPConfig mcpConfig,
+          Prompt prompt, boolean resetToolChoice) {
         this.name = name;
         this.instructions = instructions;
         this.dynamicInstructions = dynamicInstructions;
@@ -64,6 +67,8 @@ public final class Agent<TContext> {
         this.handoffDescription = handoffDescription;
         this.mcpServers = Collections.unmodifiableList(mcpServers);
         this.mcpConfig = mcpConfig;
+        this.prompt = prompt;
+        this.resetToolChoice = resetToolChoice;
     }
 
     public static <T> AgentBuilder<T> builder(String name) {
@@ -88,7 +93,9 @@ public final class Agent<TContext> {
             .toolUseBehavior(toolUseBehavior)
             .handoffDescription(handoffDescription)
             .mcpServers(mcpServers)
-            .mcpConfig(mcpConfig);
+            .mcpConfig(mcpConfig)
+            .prompt(prompt)
+            .resetToolChoice(resetToolChoice);
     }
 
     public Tool asTool(String description) {
@@ -96,6 +103,9 @@ public final class Agent<TContext> {
     }
 
     public String resolveInstructions(RunContext<TContext> ctx) {
+        if (prompt != null) {
+            return prompt.resolve(ctx, this);
+        }
         if (dynamicInstructions != null) {
             return dynamicInstructions.apply(ctx, this);
         }
@@ -120,4 +130,6 @@ public final class Agent<TContext> {
     public String handoffDescription() { return handoffDescription; }
     public List<MCPServer> mcpServers() { return mcpServers; }
     public MCPConfig mcpConfig() { return mcpConfig; }
+    public Prompt prompt() { return prompt; }
+    public boolean resetToolChoice() { return resetToolChoice; }
 }

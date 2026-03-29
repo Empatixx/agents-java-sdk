@@ -34,6 +34,8 @@ public final class AgentBuilder<TContext> {
     private String handoffDescription;
     private List<MCPServer> mcpServers = new ArrayList<>();
     private MCPConfig mcpConfig;
+    private Prompt prompt;
+    private boolean resetToolChoice = false;
 
     AgentBuilder() {}
 
@@ -138,6 +140,16 @@ public final class AgentBuilder<TContext> {
         return this;
     }
 
+    public AgentBuilder<TContext> prompt(Prompt prompt) {
+        this.prompt = prompt;
+        return this;
+    }
+
+    public AgentBuilder<TContext> resetToolChoice(boolean resetToolChoice) {
+        this.resetToolChoice = resetToolChoice;
+        return this;
+    }
+
     public Agent<TContext> build() {
         if (name == null || name.isBlank()) {
             throw new IllegalStateException("Agent name is required");
@@ -145,6 +157,6 @@ public final class AgentBuilder<TContext> {
         return new Agent<>(name, instructions, dynamicInstructions, model, modelSettings,
             tools, handoffs, inputGuardrails, outputGuardrails, toolInputGuardrails, toolOutputGuardrails,
             outputType, hooks, toolUseBehavior, handoffDescription,
-            mcpServers, mcpConfig);
+            mcpServers, mcpConfig, prompt, resetToolChoice);
     }
 }
