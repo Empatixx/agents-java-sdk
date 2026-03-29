@@ -28,6 +28,8 @@ class ErrorHandlerTest {
         };
     }
 
+    private final Runner runner = Runner.of(infiniteToolModel());
+
     @Test
     void maxTurnsErrorHandlerReturnsCustomOutput() {
         var noop = Tools.function("noop").description("no-op")
@@ -40,11 +42,10 @@ class ErrorHandlerTest {
 
         RunConfig<Void> config = RunConfig.<Void>builder()
             .maxTurns(2)
-            .modelOverride(infiniteToolModel())
             .errorHandlers(Map.of("max_turns", (ctx, err) -> "max_turns_reached"))
             .build();
 
-        RunResult<Void> result = Runner.run(agent, "go", config);
+        RunResult<Void> result = runner.run(agent, "go", config);
 
         assertNotNull(result);
         assertEquals("max_turns_reached", result.finalOutput());
@@ -62,11 +63,10 @@ class ErrorHandlerTest {
 
         RunConfig<Void> config = RunConfig.<Void>builder()
             .maxTurns(2)
-            .modelOverride(infiniteToolModel())
             .build();
 
         assertThrows(MaxTurnsExceededException.class,
-            () -> Runner.run(agent, "go", config));
+            () -> runner.run(agent, "go", config));
     }
 
     @Test

@@ -5,7 +5,6 @@ import cz.krokviak.agents.exception.InputGuardrailTrippedException;
 import cz.krokviak.agents.guardrail.GuardrailResult;
 import cz.krokviak.agents.guardrail.InputGuardrail;
 import cz.krokviak.agents.guardrail.OutputGuardrail;
-import cz.krokviak.agents.model.ModelRegistry;
 import cz.krokviak.agents.model.OpenAIResponsesModel;
 import cz.krokviak.agents.runner.Runner;
 
@@ -20,7 +19,7 @@ public class GuardrailExample {
             return;
         }
 
-        ModelRegistry.setDefault(new OpenAIResponsesModel(apiKey));
+        var runner = Runner.of(new OpenAIResponsesModel(apiKey));
 
         // Input guardrail: block PII
         InputGuardrail<Void> piiFilter = InputGuardrail.of("pii_filter", (ctx, input) -> {
@@ -46,7 +45,7 @@ public class GuardrailExample {
             .build();
 
         try {
-            var result = Runner.run(agent, "What is my SSN?");
+            var result = runner.run(agent, "What is my SSN?");
             System.out.println("Response: " + result.finalOutput());
         } catch (InputGuardrailTrippedException e) {
             System.out.println("Blocked: " + e.reason());

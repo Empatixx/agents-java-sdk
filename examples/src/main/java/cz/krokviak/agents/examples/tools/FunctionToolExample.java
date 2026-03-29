@@ -1,7 +1,6 @@
 package cz.krokviak.agents.examples.tools;
 
 import cz.krokviak.agents.agent.Agent;
-import cz.krokviak.agents.model.ModelRegistry;
 import cz.krokviak.agents.model.OpenAIResponsesModel;
 import cz.krokviak.agents.runner.Runner;
 import cz.krokviak.agents.tool.*;
@@ -25,7 +24,7 @@ public class FunctionToolExample {
             return;
         }
 
-        ModelRegistry.setDefault(new OpenAIResponsesModel(apiKey));
+        var runner = Runner.of(new OpenAIResponsesModel(apiKey));
 
         List<Tool> tools = Tools.fromClass(new WeatherTools());
 
@@ -43,7 +42,7 @@ public class FunctionToolExample {
             .tools(tools)
             .build();
 
-        var result = Runner.run(agent, "What's the weather in Prague and what time is it in UTC?");
+        var result = runner.run(agent, "What's the weather in Prague and what time is it in UTC?");
         System.out.println("Agent: " + result.finalOutput());
     }
 }

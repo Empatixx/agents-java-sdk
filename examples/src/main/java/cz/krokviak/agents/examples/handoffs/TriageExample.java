@@ -2,7 +2,6 @@ package cz.krokviak.agents.examples.handoffs;
 
 import cz.krokviak.agents.agent.Agent;
 import cz.krokviak.agents.handoff.Handoff;
-import cz.krokviak.agents.model.ModelRegistry;
 import cz.krokviak.agents.model.OpenAIResponsesModel;
 import cz.krokviak.agents.runner.Runner;
 
@@ -17,7 +16,7 @@ public class TriageExample {
             return;
         }
 
-        ModelRegistry.setDefault(new OpenAIResponsesModel(apiKey));
+        var runner = Runner.of(new OpenAIResponsesModel(apiKey));
 
         // Specialist agents
         Agent<Void> billingAgent = Agent.<Void>builder("BillingSpecialist")
@@ -46,7 +45,7 @@ public class TriageExample {
             ))
             .build();
 
-        var result = Runner.run(triageAgent, "I'm having trouble with my invoice from last month");
+        var result = runner.run(triageAgent, "I'm having trouble with my invoice from last month");
         System.out.println("Final agent: " + result.lastAgent().name());
         System.out.println("Response: " + result.finalOutput());
     }

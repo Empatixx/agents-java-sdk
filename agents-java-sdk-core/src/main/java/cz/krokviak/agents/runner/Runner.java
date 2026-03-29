@@ -3,7 +3,6 @@ package cz.krokviak.agents.runner;
 import cz.krokviak.agents.agent.Agent;
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.model.Model;
-import cz.krokviak.agents.model.ModelRegistry;
 import cz.krokviak.agents.streaming.EventStream;
 import cz.krokviak.agents.streaming.StreamEvent;
 import cz.krokviak.agents.tracing.Span;
@@ -11,23 +10,31 @@ import cz.krokviak.agents.tracing.Tracing;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public final class Runner {
+    private final Model defaultModel;
 
-    private Runner() {}
+    private Runner(Model defaultModel) {
+        this.defaultModel = Objects.requireNonNull(defaultModel, "defaultModel must not be null");
+    }
 
-    public static <T> RunResult<T> run(Agent<T> agent, String input) {
+    public static Runner of(Model defaultModel) {
+        return new Runner(defaultModel);
+    }
+
+    public <T> RunResult<T> run(Agent<T> agent, String input) {
         return run(agent, input, RunConfig.<T>builder().build());
     }
 
-    public static <T> RunResult<T> run(Agent<T> agent, String input, RunConfig<T> config) {
+    public <T> RunResult<T> run(Agent<T> agent, String input, RunConfig<T> config) {
         List<InputItem> items = new ArrayList<>();
         items.add(new InputItem.UserMessage(input));
         return run(agent, items, config);
     }
 
-    public static <T> RunResult<T> run(Agent<T> agent, List<InputItem> input, RunConfig<T> config) {
+    public <T> RunResult<T> run(Agent<T> agent, List<InputItem> input, RunConfig<T> config) {
         RunContext<T> ctx = new RunContext<>(config.context());
         Model model = resolveModel(agent, config);
 
@@ -53,15 +60,15 @@ public final class Runner {
         return result;
     }
 
-    public static <T> RunResult<T> run(Agent<T> agent, RunState state) {
+    public <T> RunResult<T> run(Agent<T> agent, RunState state) {
         return run(agent, state.messages(), RunConfig.<T>builder().build());
     }
 
-    public static <T> EventStream<T> runStreamed(Agent<T> agent, String input) {
+    public <T> EventStream<T> runStreamed(Agent<T> agent, String input) {
         return runStreamed(agent, input, RunConfig.<T>builder().build());
     }
 
-    public static <T> EventStream<T> runStreamed(Agent<T> agent, String input, RunConfig<T> config) {
+    public <T> EventStream<T> runStreamed(Agent<T> agent, String input, RunConfig<T> config) {
         var queue = new LinkedBlockingQueue<StreamEvent<T>>();
         var stream = new EventStream<>(queue);
 
@@ -90,10 +97,8 @@ public final class Runner {
         return stream;
     }
 
-    private static <T> Model resolveModel(Agent<T> agent, RunConfig<T> config) {
+    private <T> Model resolveModel(Agent<T> agent, RunConfig<T> config) {
         if (config.modelOverride() != null) return config.modelOverride();
-        String modelName = config.model() != null ? config.model() :
-            (agent.model() != null ? agent.model() : "default");
-        return ModelRegistry.resolve(modelName);
+        return defaultModel;
     }
 }

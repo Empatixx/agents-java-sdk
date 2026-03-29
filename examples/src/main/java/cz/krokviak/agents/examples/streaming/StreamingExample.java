@@ -1,7 +1,6 @@
 package cz.krokviak.agents.examples.streaming;
 
 import cz.krokviak.agents.agent.Agent;
-import cz.krokviak.agents.model.ModelRegistry;
 import cz.krokviak.agents.model.OpenAIResponsesModel;
 import cz.krokviak.agents.runner.Runner;
 import cz.krokviak.agents.streaming.StreamEvent;
@@ -15,14 +14,14 @@ public class StreamingExample {
             return;
         }
 
-        ModelRegistry.setDefault(new OpenAIResponsesModel(apiKey));
+        var runner = Runner.of(new OpenAIResponsesModel(apiKey));
 
         Agent<Void> agent = Agent.<Void>builder("Storyteller")
             .instructions("You are a creative storyteller. Tell engaging short stories.")
             .build();
 
         System.out.println("Streaming response:");
-        try (var stream = Runner.runStreamed(agent, "Tell me a very short story about a robot")) {
+        try (var stream = runner.runStreamed(agent, "Tell me a very short story about a robot")) {
             for (StreamEvent<Void> event : stream) {
                 switch (event) {
                     case StreamEvent.TextDeltaEvent<Void> e -> System.out.print(e.delta());
