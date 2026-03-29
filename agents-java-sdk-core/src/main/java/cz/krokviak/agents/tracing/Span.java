@@ -12,6 +12,8 @@ public final class Span implements AutoCloseable {
     private final Map<String, Object> attributes = new LinkedHashMap<>();
     private final long startTimeMs;
     private final boolean active;
+    private SpanType type = SpanType.CUSTOM;
+    private Object typedData;
 
     Span(String name, String parentSpanId, String traceId, boolean active) {
         this.spanId = UUID.randomUUID().toString().substring(0, 16);
@@ -28,6 +30,16 @@ public final class Span implements AutoCloseable {
         }
     }
 
+    public void setType(SpanType type) {
+        this.type = type;
+    }
+
+    public void setTypedData(Object typedData) {
+        this.typedData = typedData;
+    }
+
+    public SpanType type() { return type; }
+    public Object typedData() { return typedData; }
     public String spanId() { return spanId; }
     public String name() { return name; }
 
@@ -36,7 +48,7 @@ public final class Span implements AutoCloseable {
         if (active) {
             long endTimeMs = System.currentTimeMillis();
             var data = new SpanData(spanId, parentSpanId, traceId, name,
-                Map.copyOf(attributes), startTimeMs, endTimeMs);
+                Map.copyOf(attributes), startTimeMs, endTimeMs, type, typedData);
             Tracing.endSpan(this, data);
         }
     }

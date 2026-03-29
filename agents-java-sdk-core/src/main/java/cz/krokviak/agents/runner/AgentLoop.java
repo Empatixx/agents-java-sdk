@@ -38,6 +38,8 @@ public final class AgentLoop {
         // Run input guardrails in parallel before starting the loop
         runInputGuardrails(currentAgent, ctx, input);
 
+        try (Span agentSpan = Tracing.agentSpan(currentAgent.name())) {
+
         while (turns < maxTurns) {
             turns++;
 
@@ -49,7 +51,8 @@ public final class AgentLoop {
 
             // Call model
             ModelResponse response;
-            try (Span span = Tracing.span("generation")) {
+            String modelName = currentAgent.model() != null ? currentAgent.model() : "unknown";
+            try (Span span = Tracing.generationSpan(modelName)) {
                 span.setAttribute("agent", currentAgent.name());
                 response = model.call(llmCtx, currentAgent.modelSettings());
             }
@@ -84,21 +87,26 @@ public final class AgentLoop {
                         Handoff<T> handoff = findHandoff(currentAgent, toolCall.name());
                         if (handoff != null) {
                             hasHandoff = true;
-                            handoffTarget = handoff.agent();
-                            allItems.add(new RunItem.HandoffItem(currentAgent.name(), handoff.agent().name()));
-                            if (handoff.onHandoff() != null) {
-                                handoff.onHandoff().accept(ctx);
-                            }
-                            if (handoff.inputFilter() != null) {
-                                messages = new ArrayList<>(handoff.inputFilter().apply(messages));
+                            String toAgentName = handoff.agent().name();
+                            try (Span handoffSpan = Tracing.handoffSpan(currentAgent.name(), toAgentName)) {
+                                handoffTarget = handoff.agent();
+                                allItems.add(new RunItem.HandoffItem(currentAgent.name(), toAgentName));
+                                if (handoff.onHandoff() != null) {
+                                    handoff.onHandoff().accept(ctx);
+                                }
+                                if (handoff.inputFilter() != null) {
+                                    messages = new ArrayList<>(handoff.inputFilter().apply(messages));
+                                }
                             }
                         } else {
                             // Check tool input guardrails
                             ToolCallData toolCallData = new ToolCallData(toolCall.name(), toolCall.arguments());
                             for (ToolInputGuardrail<T> guard : currentAgent.toolInputGuardrails()) {
-                                GuardrailResult r = guard.execute(ctx, toolCallData);
-                                if (r.tripped()) {
-                                    throw new InputGuardrailTrippedException(guard.name(), r.reason());
+                                try (Span guardSpan = Tracing.guardrailSpan(guard.name())) {
+                                    GuardrailResult r = guard.execute(ctx, toolCallData);
+                                    if (r.tripped()) {
+                                        throw new InputGuardrailTrippedException(guard.name(), r.reason());
+                                    }
                                 }
                             }
                             // Execute tool
@@ -106,9 +114,11 @@ public final class AgentLoop {
                             // Check tool output guardrails
                             ToolOutputData toolOutputData = new ToolOutputData(toolCall.name(), toolOutput);
                             for (ToolOutputGuardrail<T> guard : currentAgent.toolOutputGuardrails()) {
-                                GuardrailResult r = guard.execute(ctx, toolOutputData);
-                                if (r.tripped()) {
-                                    throw new OutputGuardrailTrippedException(guard.name(), r.reason());
+                                try (Span guardSpan = Tracing.guardrailSpan(guard.name())) {
+                                    GuardrailResult r = guard.execute(ctx, toolOutputData);
+                                    if (r.tripped()) {
+                                        throw new OutputGuardrailTrippedException(guard.name(), r.reason());
+                                    }
                                 }
                             }
                             String outputText = toolOutput instanceof ToolOutput.Text t ? t.content() : "[non-text output]";
@@ -133,6 +143,8 @@ public final class AgentLoop {
             }
             // Tool calls processed, loop again for LLM to process results
         }
+
+        } // close agentSpan
 
         throw new MaxTurnsExceededException(maxTurns);
     }
@@ -169,7 +181,12 @@ public final class AgentLoop {
         GuardrailInputData data = new GuardrailInputData(input);
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<CompletableFuture<GuardrailResult>> futures = agent.inputGuardrails().stream()
-                .map(g -> CompletableFuture.supplyAsync(() -> g.execute(ctx, data), executor))
+                .map(g -> CompletableFuture.supplyAsync(
+                    () -> {
+                        try (Span guardSpan = Tracing.guardrailSpan(g.name())) {
+                            return g.execute(ctx, data);
+                        }
+                    }, executor))
                 .toList();
             // Collect all results
             List<GuardrailResult> results = futures.stream()
@@ -189,7 +206,7 @@ public final class AgentLoop {
     private static <T> ToolOutput executeTool(Agent<T> agent, ModelResponse.OutputItem.ToolCallRequest toolCall, RunContext<T> ctx) {
         for (Tool tool : agent.tools()) {
             if (tool.name().equals(toolCall.name()) && tool instanceof FunctionToolImpl ft) {
-                try (Span span = Tracing.span("function:" + tool.name())) {
+                try (Span span = Tracing.functionSpan(tool.name())) {
                     ToolContext<T> toolCtx = new ToolContext<>(ctx, toolCall.id());
                     return ft.execute(new ToolArgs(toolCall.arguments()), toolCtx);
                 }

@@ -37,6 +37,44 @@ public final class Tracing {
         return span;
     }
 
+    /** Creates a span with SpanType.AGENT pre-set. */
+    public static Span agentSpan(String agentName) {
+        Span span = span("agent:" + agentName);
+        span.setType(SpanType.AGENT);
+        span.setTypedData(new AgentSpanData(agentName));
+        return span;
+    }
+
+    /** Creates a span with SpanType.GENERATION pre-set. */
+    public static Span generationSpan(String model) {
+        Span span = span("generation");
+        span.setType(SpanType.GENERATION);
+        span.setTypedData(new GenerationSpanData(model));
+        return span;
+    }
+
+    /** Creates a span with SpanType.FUNCTION pre-set. */
+    public static Span functionSpan(String toolName) {
+        Span span = span("function:" + toolName);
+        span.setType(SpanType.FUNCTION);
+        span.setTypedData(new ToolSpanData(toolName));
+        return span;
+    }
+
+    /** Creates a span with SpanType.GUARDRAIL pre-set. */
+    public static Span guardrailSpan(String guardrailName) {
+        Span span = span("guardrail:" + guardrailName);
+        span.setType(SpanType.GUARDRAIL);
+        return span;
+    }
+
+    /** Creates a span with SpanType.HANDOFF pre-set. */
+    public static Span handoffSpan(String fromAgent, String toAgent) {
+        Span span = span("handoff:" + fromAgent + "->" + toAgent);
+        span.setType(SpanType.HANDOFF);
+        return span;
+    }
+
     static synchronized void endSpan(Span span, SpanData data) {
         pendingSpans.add(data);
         // Pop this span from the stack
