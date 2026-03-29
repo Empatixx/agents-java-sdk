@@ -14,15 +14,26 @@ public final class FunctionToolImpl implements Tool {
     private final List<ParamInfo> params;
     private final BiFunction<ToolArgs, ToolContext<?>, ToolOutput> handler;
     private final ToolDefinition toolDefinition;
+    private final java.util.function.Predicate<Void> enabledPredicate;
+    private final BiFunction<String, Exception, ToolOutput> failureErrorFunction;
 
     record ParamInfo(String name, String description, Class<?> type) {}
 
     FunctionToolImpl(String name, String description, List<ParamInfo> params,
                      BiFunction<ToolArgs, ToolContext<?>, ToolOutput> handler) {
+        this(name, description, params, handler, null, null);
+    }
+
+    FunctionToolImpl(String name, String description, List<ParamInfo> params,
+                     BiFunction<ToolArgs, ToolContext<?>, ToolOutput> handler,
+                     java.util.function.Predicate<Void> enabledPredicate,
+                     BiFunction<String, Exception, ToolOutput> failureErrorFunction) {
         this.name = name;
         this.description = description;
         this.params = params;
         this.handler = handler;
+        this.enabledPredicate = enabledPredicate;
+        this.failureErrorFunction = failureErrorFunction;
         this.toolDefinition = buildDefinition();
     }
 
@@ -36,10 +47,18 @@ public final class FunctionToolImpl implements Tool {
         return description;
     }
 
+    @Override
+    public boolean isEnabled() {
+        return enabledPredicate == null || enabledPredicate.test(null);
+    }
+
     public ToolOutput execute(ToolArgs args, ToolContext<?> ctx) {
         try {
             return handler.apply(args, ctx);
         } catch (Exception e) {
+            if (failureErrorFunction != null) {
+                return failureErrorFunction.apply(name, e);
+            }
             throw new ToolExecutionException(name, e);
         }
     }
@@ -125,7 +144,7 @@ public final class FunctionToolImpl implements Tool {
             }
         };
 
-        return new FunctionToolImpl(toolName, toolDescription, finalParams, handler);
+        return new FunctionToolImpl(toolName, toolDescription, finalParams, handler, null, null);
     }
 
     private static Object convertValue(Object value, Class<?> targetType) {

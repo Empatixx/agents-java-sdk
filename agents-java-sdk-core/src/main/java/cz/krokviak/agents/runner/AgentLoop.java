@@ -116,6 +116,7 @@ public final class AgentLoop {
     private static <T> List<ToolDefinition> buildToolDefinitions(Agent<T> agent) {
         List<ToolDefinition> defs = new ArrayList<>();
         for (Tool tool : agent.tools()) {
+            if (!tool.isEnabled()) continue;
             if (tool instanceof FunctionToolImpl ft) {
                 defs.add(ft.definition());
             }
