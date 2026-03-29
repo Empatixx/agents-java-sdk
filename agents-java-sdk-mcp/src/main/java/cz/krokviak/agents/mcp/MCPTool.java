@@ -1,14 +1,12 @@
-package cz.krokviak.agents.tool;
+package cz.krokviak.agents.mcp;
 
-import cz.krokviak.agents.mcp.MCPServer;
+import cz.krokviak.agents.context.ToolContext;
+import cz.krokviak.agents.tool.ExecutableTool;
+import cz.krokviak.agents.tool.ToolArgs;
+import cz.krokviak.agents.tool.ToolDefinition;
+import cz.krokviak.agents.tool.ToolOutput;
 
-import java.util.Map;
-
-/**
- * Bridges an MCP server tool into the Agent SDK's Tool sealed interface.
- * Delegates execution to the backing MCPServer.
- */
-public final class MCPTool implements Tool {
+public final class MCPTool implements ExecutableTool {
     private final ToolDefinition definition;
     private final MCPServer server;
 
@@ -27,15 +25,14 @@ public final class MCPTool implements Tool {
         return definition.description();
     }
 
+    @Override
     public ToolDefinition definition() {
         return definition;
     }
 
-    /**
-     * Execute this tool by delegating to the MCP server.
-     */
-    public ToolOutput execute(Map<String, Object> arguments) throws Exception {
-        return server.callTool(definition.name(), arguments);
+    @Override
+    public ToolOutput execute(ToolArgs args, ToolContext<?> ctx) throws Exception {
+        return server.callTool(definition.name(), args.raw());
     }
 
     public MCPServer server() {

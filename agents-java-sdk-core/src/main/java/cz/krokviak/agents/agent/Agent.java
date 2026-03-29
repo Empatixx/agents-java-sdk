@@ -7,11 +7,10 @@ import cz.krokviak.agents.guardrail.ToolInputGuardrail;
 import cz.krokviak.agents.guardrail.ToolOutputGuardrail;
 import cz.krokviak.agents.handoff.Handoff;
 import cz.krokviak.agents.hook.AgentHooks;
-import cz.krokviak.agents.mcp.MCPConfig;
-import cz.krokviak.agents.mcp.MCPServer;
 import cz.krokviak.agents.model.ModelSettings;
 import cz.krokviak.agents.tool.AgentTool;
 import cz.krokviak.agents.tool.Tool;
+import cz.krokviak.agents.tool.ToolProvider;
 
 import java.util.Collections;
 import java.util.List;
@@ -33,8 +32,7 @@ public final class Agent<TContext> {
     private final AgentHooks<TContext> hooks;
     private final ToolUseBehavior toolUseBehavior;
     private final String handoffDescription;
-    private final List<MCPServer> mcpServers;
-    private final MCPConfig mcpConfig;
+    private final List<ToolProvider> toolProviders;
     private final Prompt prompt;
     private final boolean resetToolChoice;
 
@@ -48,7 +46,7 @@ public final class Agent<TContext> {
           List<ToolOutputGuardrail<TContext>> toolOutputGuardrails,
           Class<?> outputType, AgentHooks<TContext> hooks,
           ToolUseBehavior toolUseBehavior, String handoffDescription,
-          List<MCPServer> mcpServers, MCPConfig mcpConfig,
+          List<ToolProvider> toolProviders,
           Prompt prompt, boolean resetToolChoice) {
         this.name = name;
         this.instructions = instructions;
@@ -65,8 +63,7 @@ public final class Agent<TContext> {
         this.hooks = hooks;
         this.toolUseBehavior = toolUseBehavior;
         this.handoffDescription = handoffDescription;
-        this.mcpServers = Collections.unmodifiableList(mcpServers);
-        this.mcpConfig = mcpConfig;
+        this.toolProviders = Collections.unmodifiableList(toolProviders);
         this.prompt = prompt;
         this.resetToolChoice = resetToolChoice;
     }
@@ -92,8 +89,7 @@ public final class Agent<TContext> {
             .hooks(hooks)
             .toolUseBehavior(toolUseBehavior)
             .handoffDescription(handoffDescription)
-            .mcpServers(mcpServers)
-            .mcpConfig(mcpConfig)
+            .toolProviders(toolProviders)
             .prompt(prompt)
             .resetToolChoice(resetToolChoice);
     }
@@ -128,8 +124,7 @@ public final class Agent<TContext> {
     public AgentHooks<TContext> hooks() { return hooks; }
     public ToolUseBehavior toolUseBehavior() { return toolUseBehavior; }
     public String handoffDescription() { return handoffDescription; }
-    public List<MCPServer> mcpServers() { return mcpServers; }
-    public MCPConfig mcpConfig() { return mcpConfig; }
+    public List<ToolProvider> toolProviders() { return toolProviders; }
     public Prompt prompt() { return prompt; }
     public boolean resetToolChoice() { return resetToolChoice; }
 }

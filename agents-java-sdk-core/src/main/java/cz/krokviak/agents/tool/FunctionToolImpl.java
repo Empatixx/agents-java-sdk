@@ -8,7 +8,7 @@ import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.function.BiFunction;
 
-public final class FunctionToolImpl implements Tool {
+public final class FunctionToolImpl implements ExecutableTool {
     private final String name;
     private final String description;
     private final List<ParamInfo> params;

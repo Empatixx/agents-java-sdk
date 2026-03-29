@@ -11,6 +11,9 @@
     <description>Java-idiomatic port of the OpenAI Agents SDK</description>
     <modules>
         <module>agents-java-sdk-core</module>
+        <module>agents-java-sdk-openai</module>
+        <module>agents-java-sdk-mcp</module>
+        <module>agents-java-sdk-sessions</module>
         <module>examples</module>
     </modules>
     <properties>
@@ -57,6 +60,21 @@
             <dependency>
                 <groupId>cz.krokviak</groupId>
                 <artifactId>agents-java-sdk-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cz.krokviak</groupId>
+                <artifactId>agents-java-sdk-openai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cz.krokviak</groupId>
+                <artifactId>agents-java-sdk-mcp</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cz.krokviak</groupId>
+                <artifactId>agents-java-sdk-sessions</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
