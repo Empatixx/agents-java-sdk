@@ -13,6 +13,7 @@ import cz.krokviak.agents.cli.hook.builtin.PermissionHook;
 import cz.krokviak.agents.cli.hook.builtin.PlanModeHook;
 import cz.krokviak.agents.cli.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.memory.MemoryLoader;
+import cz.krokviak.agents.cli.memory.MemoryStore;
 import cz.krokviak.agents.cli.permission.PermissionManager;
 import cz.krokviak.agents.cli.plugin.PluginContextImpl;
 import cz.krokviak.agents.cli.plugin.Plugins;
@@ -24,6 +25,8 @@ import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.skill.SkillLoader;
 import cz.krokviak.agents.cli.skill.SkillRegistry;
 import cz.krokviak.agents.cli.tool.*;
+import cz.krokviak.agents.cli.tool.MemoryWriteTool;
+import cz.krokviak.agents.cli.tool.MemoryReadTool;
 import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
 import cz.krokviak.agents.session.Session;
@@ -42,8 +45,14 @@ public class CLI {
         Model model = new AnthropicModel(config.apiKey(), config.baseUrl(), config.model());
         Path cwd = config.workingDirectory();
 
+        // Memory store — ~/.claude/projects/<cwd-hash>/memory/
+        String cwdKey = cwd.toAbsolutePath().toString()
+            .replaceAll("[^a-zA-Z0-9]", "_").replaceAll("_+", "_").replaceAll("^_|_$", "");
+        Path memoryDir = Path.of(System.getProperty("user.home"), ".claude", "projects", cwdKey, "memory");
+        MemoryStore memoryStore = new MemoryStore(memoryDir);
+
         // Memory + prompt
-        String projectInstructions = MemoryLoader.loadProjectInstructions(cwd);
+        String projectInstructions = MemoryLoader.loadProjectInstructions(cwd, memoryStore);
         String systemPrompt = SystemPrompts.build(cwd, projectInstructions);
 
         // Permission
@@ -117,6 +126,10 @@ public class CLI {
         toolList.add(new TaskStopTool(taskManager));
         toolList.add(new NotebookEditTool(cwd));
         toolList.add(new SkillTool(skillRegistry));
+
+        // Tools — memory
+        toolList.add(new MemoryWriteTool(memoryStore));
+        toolList.add(new MemoryReadTool(memoryStore));
 
         // Tool dispatcher
         ToolDispatcher toolDispatcher = new ToolDispatcher(toolList, hooks, ctx);

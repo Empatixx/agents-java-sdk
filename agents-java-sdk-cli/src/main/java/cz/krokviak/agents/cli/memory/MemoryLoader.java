@@ -8,6 +8,10 @@ public final class MemoryLoader {
     private MemoryLoader() {}
 
     public static String loadProjectInstructions(Path cwd) {
+        return loadProjectInstructions(cwd, null);
+    }
+
+    public static String loadProjectInstructions(Path cwd, MemoryStore memoryStore) {
         StringBuilder sb = new StringBuilder();
 
         // Global instructions
@@ -21,6 +25,15 @@ public final class MemoryLoader {
         // Project root CLAUDE.md
         Path projectRootPath = cwd.resolve("CLAUDE.md");
         appendIfExists(sb, projectRootPath, "## Project Instructions (CLAUDE.md)");
+
+        // Auto-memory from MemoryStore
+        if (memoryStore != null) {
+            String memoryPrompt = memoryStore.getMemoryPrompt();
+            if (!memoryPrompt.isBlank()) {
+                if (!sb.isEmpty()) sb.append("\n\n");
+                sb.append("## Auto-Memory\n\n").append(memoryPrompt.strip());
+            }
+        }
 
         return sb.toString();
     }
