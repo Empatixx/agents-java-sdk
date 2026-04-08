@@ -5,6 +5,7 @@ import cz.krokviak.agents.cli.cost.CostTracker;
 import cz.krokviak.agents.cli.engine.CompactionPipeline;
 import cz.krokviak.agents.cli.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.permission.PermissionManager;
+import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.task.TaskManager;
 import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
@@ -18,7 +19,7 @@ import java.util.Collections;
 import java.util.List;
 
 public final class CliContext {
-    private final TerminalOutput output;
+    private final Renderer output;
     private final PermissionManager permissions;
     private final ContextCompactor compactor;
     private final CompactionPipeline compactionPipeline;
@@ -39,7 +40,7 @@ public final class CliContext {
     private volatile boolean planMode;
 
     public CliContext(Model model, String modelId, String apiKey, String baseUrl,
-                     TerminalOutput output, PermissionManager permissions,
+                     Renderer output, PermissionManager permissions,
                      ContextCompactor compactor, Path workingDirectory,
                      String systemPrompt, Session session, String sessionId,
                      TaskManager taskManager, MailboxManager mailboxManager) {
@@ -62,7 +63,7 @@ public final class CliContext {
         this.history = Collections.synchronizedList(new ArrayList<>());
     }
 
-    public TerminalOutput output() { return output; }
+    public Renderer output() { return output; }
     public PermissionManager permissions() { return permissions; }
     public ContextCompactor compactor() { return compactor; }
     public CompactionPipeline compactionPipeline() { return compactionPipeline; }

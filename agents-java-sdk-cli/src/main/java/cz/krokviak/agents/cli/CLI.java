@@ -16,6 +16,9 @@ import cz.krokviak.agents.cli.plugin.PluginContextImpl;
 import cz.krokviak.agents.cli.plugin.Plugins;
 import cz.krokviak.agents.cli.repl.Repl;
 import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.cli.render.AnsiRenderer;
+import cz.krokviak.agents.cli.render.PlainRenderer;
+import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.tool.*;
 import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
@@ -63,8 +66,9 @@ public class CLI {
         TaskManager taskManager = new TaskManager();
         MailboxManager mailboxManager = new MailboxManager();
 
-        // Context
-        TerminalOutput output = new TerminalOutput();
+        // Context — choose renderer based on TTY detection
+        boolean isTty = System.console() != null;
+        Renderer output = isTty ? new AnsiRenderer() : new PlainRenderer();
         ContextCompactor compactor = new ContextCompactor(model);
         CliContext ctx = new CliContext(model, config.model(), config.apiKey(), config.baseUrl(),
             output, permissionManager, compactor, cwd, systemPrompt, session, config.sessionId(),
