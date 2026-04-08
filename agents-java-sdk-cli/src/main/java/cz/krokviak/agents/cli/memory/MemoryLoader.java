@@ -1,0 +1,39 @@
+package cz.krokviak.agents.cli.memory;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public final class MemoryLoader {
+    private MemoryLoader() {}
+
+    public static String loadProjectInstructions(Path cwd) {
+        StringBuilder sb = new StringBuilder();
+
+        // Global instructions
+        Path globalPath = Path.of(System.getProperty("user.home"), ".claude", "CLAUDE.md");
+        appendIfExists(sb, globalPath, "## Global Instructions");
+
+        // Project .claude/CLAUDE.md
+        Path projectDotClaudePath = cwd.resolve(".claude").resolve("CLAUDE.md");
+        appendIfExists(sb, projectDotClaudePath, "## Project Instructions (.claude/CLAUDE.md)");
+
+        // Project root CLAUDE.md
+        Path projectRootPath = cwd.resolve("CLAUDE.md");
+        appendIfExists(sb, projectRootPath, "## Project Instructions (CLAUDE.md)");
+
+        return sb.toString();
+    }
+
+    private static void appendIfExists(StringBuilder sb, Path path, String header) {
+        if (Files.isRegularFile(path)) {
+            try {
+                String content = Files.readString(path);
+                if (!content.isBlank()) {
+                    if (!sb.isEmpty()) sb.append("\n\n");
+                    sb.append(header).append("\n\n").append(content.strip());
+                }
+            } catch (IOException ignored) {}
+        }
+    }
+}

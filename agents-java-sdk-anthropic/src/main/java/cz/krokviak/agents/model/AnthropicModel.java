@@ -1,0 +1,154 @@
+package cz.krokviak.agents.model;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import cz.krokviak.agents.http.SseParser;
+import cz.krokviak.agents.model.dto.AnthropicDto;
+import cz.krokviak.agents.runner.InputItem;
+import cz.krokviak.agents.tool.ToolDefinition;
+
+import java.io.InputStream;
+import java.util.*;
+
+public class AnthropicModel implements Model {
+    private final AnthropicHttpClient httpClient;
+    private final ObjectMapper mapper;
+    private final String modelId;
+
+    public AnthropicModel(String apiKey) {
+        this(apiKey, "https://api.anthropic.com", "claude-sonnet-4-20250514");
+    }
+
+    public AnthropicModel(String apiKey, String baseUrl, String modelId) {
+        this.httpClient = new AnthropicHttpClient(baseUrl, apiKey);
+        this.mapper = httpClient.objectMapper();
+        this.modelId = modelId;
+    }
+
+    @Override
+    public ModelResponse call(LlmContext context, ModelSettings settings) {
+        AnthropicDto.Request body = buildRequestBody(context, settings, false);
+
+        try {
+            AnthropicDto.Response response = httpClient.post(
+                "/v1/messages", body, AnthropicDto.Response.class);
+            return parseResponse(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Anthropic Messages API call failed", e);
+        }
+    }
+
+    @Override
+    public ModelResponseStream callStreamed(LlmContext context, ModelSettings settings) {
+        AnthropicDto.Request body = buildRequestBody(context, settings, true);
+        InputStream stream = httpClient.postStream("/v1/messages", body);
+        Iterator<SseParser.SseEvent> sseIterator = SseParser.stream(stream);
+
+        return new AnthropicResponseStream(sseIterator, mapper);
+    }
+
+    private AnthropicDto.Request buildRequestBody(LlmContext context, ModelSettings settings, boolean stream) {
+        StringBuilder systemPrompt = new StringBuilder();
+        if (context.systemPrompt() != null && !context.systemPrompt().isEmpty()) {
+            systemPrompt.append(context.systemPrompt());
+        }
+
+        List<AnthropicDto.Message> messages = buildMessages(context.messages(), systemPrompt);
+
+        List<AnthropicDto.Tool> tools = context.tools().isEmpty() ? null :
+            context.tools().stream().map(this::mapTool).toList();
+
+        int maxTokens = (settings != null && settings.maxTokens() != null)
+            ? settings.maxTokens() : 4096;
+
+        String system = systemPrompt.isEmpty() ? null : systemPrompt.toString();
+
+        return new AnthropicDto.Request(
+            modelId,
+            maxTokens,
+            system,
+            messages,
+            stream ? Boolean.TRUE : null,
+            tools,
+            settings != null ? settings.temperature() : null,
+            settings != null ? settings.topP() : null
+        );
+    }
+
+    private List<AnthropicDto.Message> buildMessages(List<InputItem> items, StringBuilder systemPrompt) {
+        List<AnthropicDto.Message> raw = new ArrayList<>();
+
+        for (InputItem item : items) {
+            switch (item) {
+                case InputItem.SystemMessage msg -> {
+                    if (!systemPrompt.isEmpty()) systemPrompt.append("\n");
+                    systemPrompt.append(msg.content());
+                }
+                case InputItem.UserMessage msg ->
+                    raw.add(new AnthropicDto.Message("user",
+                        List.of(new AnthropicDto.ContentBlock.TextBlock(msg.content()))));
+                case InputItem.AssistantMessage msg -> {
+                    List<AnthropicDto.ContentBlock> content = new ArrayList<>();
+                    if (msg.content() != null && !msg.content().isEmpty()) {
+                        content.add(new AnthropicDto.ContentBlock.TextBlock(msg.content()));
+                    }
+                    for (InputItem.ToolCall tc : msg.toolCalls()) {
+                        content.add(new AnthropicDto.ContentBlock.ToolUseBlock(tc.id(), tc.name(), tc.arguments()));
+                    }
+                    raw.add(new AnthropicDto.Message("assistant", content));
+                }
+                case InputItem.ToolResult result ->
+                    raw.add(new AnthropicDto.Message("user",
+                        List.of(new AnthropicDto.ContentBlock.ToolResultBlock(result.toolCallId(), result.output()))));
+            }
+        }
+
+        // Merge adjacent same-role messages
+        List<AnthropicDto.Message> merged = new ArrayList<>();
+        for (AnthropicDto.Message msg : raw) {
+            if (!merged.isEmpty() && merged.getLast().role().equals(msg.role())) {
+                AnthropicDto.Message last = merged.removeLast();
+                List<AnthropicDto.ContentBlock> combined = new ArrayList<>(last.content());
+                combined.addAll(msg.content());
+                merged.add(new AnthropicDto.Message(last.role(), combined));
+            } else {
+                merged.add(msg);
+            }
+        }
+
+        return merged;
+    }
+
+    private AnthropicDto.Tool mapTool(ToolDefinition td) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> properties = (Map<String, Object>) td.parametersSchema().getOrDefault("properties", Map.of());
+        @SuppressWarnings("unchecked")
+        List<String> required = (List<String>) td.parametersSchema().get("required");
+
+        return new AnthropicDto.Tool(
+            td.name(),
+            td.description(),
+            new AnthropicDto.InputSchema("object", properties, required)
+        );
+    }
+
+    private ModelResponse parseResponse(AnthropicDto.Response response) {
+        String id = response.id();
+        int inputTokens = response.usage() != null ? response.usage().inputTokens() : 0;
+        int outputTokens = response.usage() != null ? response.usage().outputTokens() : 0;
+
+        List<ModelResponse.OutputItem> outputs = new ArrayList<>();
+        if (response.content() != null) {
+            for (AnthropicDto.ContentBlock block : response.content()) {
+                switch (block) {
+                    case AnthropicDto.ContentBlock.TextBlock tb ->
+                        outputs.add(new ModelResponse.OutputItem.Message(tb.text()));
+                    case AnthropicDto.ContentBlock.ToolUseBlock tub ->
+                        outputs.add(new ModelResponse.OutputItem.ToolCallRequest(tub.id(), tub.name(), tub.input()));
+                    case AnthropicDto.ContentBlock.ToolResultBlock _ -> {} // not expected in responses
+                }
+            }
+        }
+
+        return new ModelResponse(id, outputs, new Usage(inputTokens, outputTokens));
+    }
+}
