@@ -23,6 +23,8 @@ import cz.krokviak.agents.cli.task.TaskManager;
 import cz.krokviak.agents.cli.render.AnsiRenderer;
 import cz.krokviak.agents.cli.render.PlainRenderer;
 import cz.krokviak.agents.cli.render.Renderer;
+import cz.krokviak.agents.cli.render.Theme;
+import cz.krokviak.agents.cli.render.TuiRenderer;
 import cz.krokviak.agents.cli.skill.SkillLoader;
 import cz.krokviak.agents.cli.skill.SkillRegistry;
 import cz.krokviak.agents.cli.tool.*;
@@ -90,9 +92,15 @@ public class CLI {
         AgentRegistry agentRegistry = new AgentRegistry();
         TeamManager teamManager = new TeamManager();
 
-        // Context — choose renderer based on TTY detection
-        boolean isTty = System.console() != null;
-        Renderer output = isTty ? new AnsiRenderer() : new PlainRenderer();
+        // Context — choose renderer based on flags and TTY detection
+        Renderer output;
+        if (config.tui()) {
+            output = new TuiRenderer(Theme.dark());
+        } else if (System.console() != null) {
+            output = new AnsiRenderer(Theme.dark());
+        } else {
+            output = new PlainRenderer();
+        }
         ContextCompactor compactor = new ContextCompactor(model);
         CliContext ctx = new CliContext(model, config.model(), config.apiKey(), config.baseUrl(),
             output, permissionManager, compactor, cwd, systemPrompt, session, config.sessionId(),

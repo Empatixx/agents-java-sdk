@@ -9,7 +9,8 @@ public record CliConfig(
     Path workingDirectory,
     String baseUrl,
     int maxTurns,
-    String permissionMode
+    String permissionMode,
+    boolean tui
 ) {
 
     public static CliConfig parse(String[] args) {
@@ -20,6 +21,7 @@ public record CliConfig(
         String baseUrl = "https://api.anthropic.com";
         int maxTurns = 50;
         String permissionMode = "default";
+        boolean tui = false;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -30,6 +32,7 @@ public record CliConfig(
                 case "--base-url" -> baseUrl = args[++i];
                 case "--max-turns" -> maxTurns = Integer.parseInt(args[++i]);
                 case "--permission-mode" -> permissionMode = args[++i];
+                case "--tui" -> tui = true;
                 default -> {
                     if (args[i].startsWith("-")) {
                         System.err.println("Unknown option: " + args[i]);
@@ -43,6 +46,6 @@ public record CliConfig(
             System.exit(1);
         }
 
-        return new CliConfig(apiKey, model, sessionId, workingDirectory, baseUrl, maxTurns, permissionMode);
+        return new CliConfig(apiKey, model, sessionId, workingDirectory, baseUrl, maxTurns, permissionMode, tui);
     }
 }
