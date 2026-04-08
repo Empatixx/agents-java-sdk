@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli;
 
+import cz.krokviak.agents.cli.agent.AgentRegistry;
+import cz.krokviak.agents.cli.agent.TeamManager;
 import cz.krokviak.agents.cli.command.Commands;
 import cz.krokviak.agents.cli.command.builtin.*;
 import cz.krokviak.agents.cli.engine.AgentRunner;
@@ -65,6 +67,8 @@ public class CLI {
         // Task manager
         TaskManager taskManager = new TaskManager();
         MailboxManager mailboxManager = new MailboxManager();
+        AgentRegistry agentRegistry = new AgentRegistry();
+        TeamManager teamManager = new TeamManager();
 
         // Context — choose renderer based on TTY detection
         boolean isTty = System.console() != null;
@@ -108,9 +112,11 @@ public class CLI {
         // Tool dispatcher
         ToolDispatcher toolDispatcher = new ToolDispatcher(toolList, hooks, ctx);
 
-        // Tools that need ToolDispatcher/TaskManager (added after dispatcher creation)
-        toolList.add(new AgentTool(ctx, toolList, taskManager));
+        // Tools that need ToolDispatcher/TaskManager/AgentRegistry (added after dispatcher creation)
+        toolList.add(new AgentTool(ctx, toolList, taskManager, agentRegistry));
         toolList.add(new ToolSearchTool(toolDispatcher));
+        toolList.add(new TeamCreateTool(teamManager));
+        toolList.add(new TeamDeleteTool(teamManager));
 
         // Commands (20 total)
         Commands commands = new Commands();

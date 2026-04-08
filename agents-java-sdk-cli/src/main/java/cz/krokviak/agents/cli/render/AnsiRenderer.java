@@ -347,6 +347,7 @@ public final class AnsiRenderer implements Renderer {
             case WAITING   -> "…";
             case COMPLETED -> "✓";
             case FAILED    -> "✗";
+            case KILLED    -> "✗";
         };
     }
 
@@ -357,6 +358,7 @@ public final class AnsiRenderer implements Renderer {
             case WAITING   -> theme.warning();
             case COMPLETED -> theme.success();
             case FAILED    -> theme.error();
+            case KILLED    -> theme.muted();
         };
     }
 
@@ -367,6 +369,7 @@ public final class AnsiRenderer implements Renderer {
             case WAITING   -> "waiting";
             case COMPLETED -> "completed";
             case FAILED    -> "failed";
+            case KILLED    -> "killed";
         };
     }
 

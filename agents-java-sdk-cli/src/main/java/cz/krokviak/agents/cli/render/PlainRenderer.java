@@ -152,7 +152,7 @@ public final class PlainRenderer implements Renderer {
             case STARTING, RUNNING -> "~";
             case WAITING           -> "...";
             case COMPLETED         -> "+";
-            case FAILED            -> "!";
+            case FAILED, KILLED    -> "!";
         };
         String line = icon + " " + agentName + "  " + status.name().toLowerCase();
         if (detail != null && !detail.isEmpty()) {
