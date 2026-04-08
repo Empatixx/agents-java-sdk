@@ -21,6 +21,8 @@ import cz.krokviak.agents.cli.task.TaskManager;
 import cz.krokviak.agents.cli.render.AnsiRenderer;
 import cz.krokviak.agents.cli.render.PlainRenderer;
 import cz.krokviak.agents.cli.render.Renderer;
+import cz.krokviak.agents.cli.skill.SkillLoader;
+import cz.krokviak.agents.cli.skill.SkillRegistry;
 import cz.krokviak.agents.cli.tool.*;
 import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
@@ -63,6 +65,12 @@ public class CLI {
                 System.err.println("Warning: Failed to initialize session storage: " + e.getMessage());
             }
         }
+
+        // Skills
+        SkillRegistry skillRegistry = new SkillRegistry();
+        SkillLoader.loadBuiltinSkills().forEach(skillRegistry::register);
+        SkillLoader.loadUserSkills().forEach(skillRegistry::register);
+        SkillLoader.loadProjectSkills(cwd).forEach(skillRegistry::register);
 
         // Task manager
         TaskManager taskManager = new TaskManager();
@@ -108,6 +116,7 @@ public class CLI {
         toolList.add(new TaskUpdateTool(taskManager));
         toolList.add(new TaskStopTool(taskManager));
         toolList.add(new NotebookEditTool(cwd));
+        toolList.add(new SkillTool(skillRegistry));
 
         // Tool dispatcher
         ToolDispatcher toolDispatcher = new ToolDispatcher(toolList, hooks, ctx);

@@ -7,7 +7,7 @@ public final class ToolClassifier {
 
     private static final Set<String> READ_ONLY = Set.of(
         "read_file", "glob", "grep", "list_directory", "tool_search",
-        "web_fetch", "web_search", "task_get", "task_list"
+        "web_fetch", "web_search", "task_get", "task_list", "skill"
     );
 
     public static boolean isReadOnly(String toolName) {
