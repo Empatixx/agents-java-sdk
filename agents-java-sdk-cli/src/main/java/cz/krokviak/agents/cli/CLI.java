@@ -146,6 +146,11 @@ public class CLI {
         // Tools — remote trigger
         toolList.add(new RemoteTriggerTool());
 
+        // Tools — brief, config, todo
+        toolList.add(new BriefTool(model));
+        toolList.add(new ConfigTool());
+        toolList.add(new TodoWriteTool());
+
         // Tool dispatcher
         ToolDispatcher toolDispatcher = new ToolDispatcher(toolList, hooks, ctx);
 
