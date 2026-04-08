@@ -4,6 +4,7 @@ import cz.krokviak.agents.cli.agent.AgentRegistry;
 import cz.krokviak.agents.cli.agent.TeamManager;
 import cz.krokviak.agents.cli.command.Commands;
 import cz.krokviak.agents.cli.command.builtin.*;
+import cz.krokviak.agents.cli.cron.CronScheduler;
 import cz.krokviak.agents.cli.engine.AgentRunner;
 import cz.krokviak.agents.cli.engine.ToolDispatcher;
 import cz.krokviak.agents.cli.context.ContextCompactor;
@@ -84,6 +85,8 @@ public class CLI {
         // Task manager
         TaskManager taskManager = new TaskManager();
         MailboxManager mailboxManager = new MailboxManager();
+        CronScheduler cronScheduler = new CronScheduler(entry ->
+            System.err.println("[cron] Triggered: " + entry.id() + " — " + entry.prompt()));
         AgentRegistry agentRegistry = new AgentRegistry();
         TeamManager teamManager = new TeamManager();
 
@@ -130,6 +133,18 @@ public class CLI {
         // Tools — memory
         toolList.add(new MemoryWriteTool(memoryStore));
         toolList.add(new MemoryReadTool(memoryStore));
+
+        // Tools — task output & synthetic output
+        toolList.add(new TaskOutputTool(taskManager));
+        toolList.add(new SyntheticOutputTool());
+
+        // Tools — cron scheduling
+        toolList.add(new CronCreateTool(cronScheduler));
+        toolList.add(new CronDeleteTool(cronScheduler));
+        toolList.add(new CronListTool(cronScheduler));
+
+        // Tools — remote trigger
+        toolList.add(new RemoteTriggerTool());
 
         // Tool dispatcher
         ToolDispatcher toolDispatcher = new ToolDispatcher(toolList, hooks, ctx);
