@@ -9,6 +9,7 @@ import cz.krokviak.agents.tool.ToolDefinition;
 
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class OpenAIChatCompletionsModel implements Model {
     private final AgentHttpClient httpClient;
@@ -84,7 +85,8 @@ public class OpenAIChatCompletionsModel implements Model {
             settings != null ? settings.temperature() : null,
             settings != null ? settings.topP() : null,
             settings != null ? settings.maxTokens() : null,
-            stream ? Boolean.TRUE : null
+            stream ? Boolean.TRUE : null,
+            stream ? new ChatCompletionsDto.StreamOptions(true) : null
         );
     }
 
@@ -129,6 +131,13 @@ public class OpenAIChatCompletionsModel implements Model {
         private final Iterator<SseParser.SseEvent> sseIterator;
         private final ObjectMapper mapper;
 
+        // Accumulate tool call state across deltas
+        private final Map<Integer, String> toolCallIds = new HashMap<>();
+        private final Map<Integer, String> toolCallNames = new HashMap<>();
+        private final Map<Integer, StringBuilder> toolCallArgs = new HashMap<>();
+        private String responseId;
+        private Usage usage;
+
         ChatCompletionsResponseStream(Iterator<SseParser.SseEvent> sseIterator, ObjectMapper mapper) {
             this.sseIterator = sseIterator;
             this.mapper = mapper;
@@ -137,28 +146,101 @@ public class OpenAIChatCompletionsModel implements Model {
         @Override
         public Iterator<Event> iterator() {
             return new Iterator<>() {
-                @Override public boolean hasNext() { return sseIterator.hasNext(); }
+                private final Queue<Event> buffer = new ArrayDeque<>();
+
+                @Override
+                public boolean hasNext() {
+                    return !buffer.isEmpty() || sseIterator.hasNext();
+                }
+
                 @Override
                 public Event next() {
-                    SseParser.SseEvent sse = sseIterator.next();
-                    if (sse.isDone()) return new Event.Done(null);
-                    try {
-                        ChatCompletionsDto.StreamChunk chunk = mapper.readValue(
-                            sse.data(), ChatCompletionsDto.StreamChunk.class);
-                        if (chunk.choices() != null && !chunk.choices().isEmpty()) {
-                            ChatCompletionsDto.StreamDelta delta = chunk.choices().get(0).delta();
-                            if (delta != null && delta.content() != null) {
+                    if (!buffer.isEmpty()) return buffer.poll();
+
+                    while (sseIterator.hasNext()) {
+                        SseParser.SseEvent sse = sseIterator.next();
+                        if (sse.isDone()) {
+                            // Build final response with accumulated tool calls
+                            List<ModelResponse.OutputItem> outputs = new ArrayList<>();
+                            for (var entry : toolCallIds.entrySet()) {
+                                int idx = entry.getKey();
+                                Map<String, Object> args;
+                                try {
+                                    @SuppressWarnings("unchecked")
+                                    Map<String, Object> parsed = mapper.readValue(
+                                        toolCallArgs.getOrDefault(idx, new StringBuilder("{}")).toString(), Map.class);
+                                    args = parsed;
+                                } catch (Exception e) {
+                                    args = Map.of();
+                                }
+                                outputs.add(new ModelResponse.OutputItem.ToolCallRequest(
+                                    entry.getValue(),
+                                    toolCallNames.getOrDefault(idx, ""),
+                                    args));
+                            }
+                            return new Event.Done(new ModelResponse(
+                                responseId, outputs,
+                                usage != null ? usage : Usage.zero()));
+                        }
+
+                        try {
+                            ChatCompletionsDto.StreamChunk chunk = mapper.readValue(
+                                sse.data(), ChatCompletionsDto.StreamChunk.class);
+
+                            if (chunk.id() != null) responseId = chunk.id();
+                            if (chunk.usage() != null) {
+                                usage = new Usage(chunk.usage().promptTokens(), chunk.usage().completionTokens());
+                            }
+
+                            if (chunk.choices() == null || chunk.choices().isEmpty()) continue;
+                            var choice = chunk.choices().get(0);
+                            ChatCompletionsDto.StreamDelta delta = choice.delta();
+
+                            if (delta == null) {
+                                if ("stop".equals(choice.finishReason())) continue;
+                                continue;
+                            }
+
+                            // Text content
+                            if (delta.content() != null && !delta.content().isEmpty()) {
                                 return new Event.TextDelta(delta.content());
                             }
+
+                            // Tool call deltas
+                            if (delta.toolCalls() != null) {
+                                for (var tc : delta.toolCalls()) {
+                                    int idx = tc.index();
+                                    if (tc.id() != null) {
+                                        toolCallIds.put(idx, tc.id());
+                                    }
+                                    if (tc.function() != null) {
+                                        if (tc.function().name() != null) {
+                                            toolCallNames.put(idx, tc.function().name());
+                                        }
+                                        if (tc.function().arguments() != null) {
+                                            toolCallArgs.computeIfAbsent(idx, k -> new StringBuilder())
+                                                .append(tc.function().arguments());
+                                            // Emit delta for UI feedback
+                                            buffer.add(new Event.ToolCallDelta(
+                                                toolCallIds.getOrDefault(idx, ""),
+                                                toolCallNames.getOrDefault(idx, ""),
+                                                tc.function().arguments()));
+                                        }
+                                    }
+                                }
+                                if (!buffer.isEmpty()) return buffer.poll();
+                            }
+                        } catch (Exception e) {
+                            // Skip unparseable chunks
                         }
-                        return new Event.TextDelta("");
-                    } catch (Exception e) {
-                        return new Event.TextDelta("");
                     }
+                    // Stream ended without [DONE]
+                    return new Event.Done(new ModelResponse(responseId, List.of(), usage != null ? usage : Usage.zero()));
                 }
             };
         }
 
-        @Override public void close() {}
+        @Override
+        public void close() {}
     }
 }

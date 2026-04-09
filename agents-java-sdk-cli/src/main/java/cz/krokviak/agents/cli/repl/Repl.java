@@ -4,6 +4,7 @@ import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.command.Commands;
 import cz.krokviak.agents.cli.engine.AgentRunner;
+import cz.krokviak.agents.cli.render.tui.CliApp;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -12,18 +13,44 @@ public class Repl {
     private final CliContext ctx;
     private final Commands commands;
     private final AgentRunner runner;
+    private final CliApp cliApp; // null when piped/non-TTY
 
-    public Repl(CliContext ctx, Commands commands, AgentRunner runner) {
+    public Repl(CliContext ctx, Commands commands, AgentRunner runner, CliApp cliApp) {
         this.ctx = ctx;
         this.commands = commands;
         this.runner = runner;
+        this.cliApp = cliApp;
     }
 
     public void start() {
         loadSessionHistory();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
-            while (true) {
-                printPrompt();
+
+        if (cliApp != null) {
+            Thread.ofVirtual().name("cli-app").start(() -> {
+                try { cliApp.run(); } catch (Exception e) {
+                    System.err.println("CliApp error: " + e.getMessage());
+                }
+            });
+            try { cliApp.awaitReady(); } catch (InterruptedException ignored) {}
+            startLoop(cliApp::readLine);
+        } else {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+                startLoop(reader::readLine);
+            } catch (Exception e) {
+                ctx.output().printError("Fatal: " + e.getMessage());
+            }
+        }
+    }
+
+    @FunctionalInterface
+    private interface InputReader {
+        String readLine() throws Exception;
+    }
+
+    private void startLoop(InputReader reader) {
+        while (true) {
+            printPrompt();
+            try {
                 String line = reader.readLine();
                 if (line == null) break;
                 String input = line.trim();
@@ -34,9 +61,10 @@ public class Repl {
                     try { runner.run(input); }
                     catch (Exception e) { ctx.output().printError(e.getMessage()); }
                 }
+            } catch (Exception e) {
+                ctx.output().printError("Fatal: " + e.getMessage());
+                break;
             }
-        } catch (Exception e) {
-            ctx.output().printError("Fatal: " + e.getMessage());
         }
     }
 

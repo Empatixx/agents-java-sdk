@@ -10,18 +10,22 @@ public record CliConfig(
     String baseUrl,
     int maxTurns,
     String permissionMode,
-    boolean tui
+    boolean tui,
+    Provider provider
 ) {
 
+    public enum Provider { ANTHROPIC, OPENAI }
+
     public static CliConfig parse(String[] args) {
-        String apiKey = System.getenv("ANTHROPIC_API_KEY");
-        String model = "claude-sonnet-4-20250514";
+        String apiKey = null;
+        String model = null;
         String sessionId = null;
         Path workingDirectory = Path.of(System.getProperty("user.dir"));
-        String baseUrl = "https://api.anthropic.com";
+        String baseUrl = null;
         int maxTurns = 50;
         String permissionMode = "default";
         boolean tui = false;
+        Provider provider = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -33,6 +37,7 @@ public record CliConfig(
                 case "--max-turns" -> maxTurns = Integer.parseInt(args[++i]);
                 case "--permission-mode" -> permissionMode = args[++i];
                 case "--tui" -> tui = true;
+                case "--provider" -> provider = Provider.valueOf(args[++i].toUpperCase());
                 default -> {
                     if (args[i].startsWith("-")) {
                         System.err.println("Unknown option: " + args[i]);
@@ -41,11 +46,51 @@ public record CliConfig(
             }
         }
 
+        // Auto-detect provider from env vars if not explicitly set
+        if (provider == null && apiKey == null) {
+            String anthropicKey = System.getenv("ANTHROPIC_API_KEY");
+            String openaiKey = System.getenv("OPENAI_API_KEY");
+            if (anthropicKey != null && !anthropicKey.isBlank()) {
+                provider = Provider.ANTHROPIC;
+                apiKey = anthropicKey;
+            } else if (openaiKey != null && !openaiKey.isBlank()) {
+                provider = Provider.OPENAI;
+                apiKey = openaiKey;
+            }
+        } else if (apiKey == null) {
+            // Provider set explicitly, pick matching env var
+            apiKey = switch (provider) {
+                case ANTHROPIC -> System.getenv("ANTHROPIC_API_KEY");
+                case OPENAI -> System.getenv("OPENAI_API_KEY");
+            };
+        }
+
+        // Default provider if still null
+        if (provider == null) {
+            provider = Provider.ANTHROPIC;
+        }
+
+        // Default model per provider
+        if (model == null) {
+            model = switch (provider) {
+                case ANTHROPIC -> "claude-sonnet-4-20250514";
+                case OPENAI -> "gpt-4.1";
+            };
+        }
+
+        // Default base URL per provider
+        if (baseUrl == null) {
+            baseUrl = switch (provider) {
+                case ANTHROPIC -> "https://api.anthropic.com";
+                case OPENAI -> "https://api.openai.com/v1";
+            };
+        }
+
         if (apiKey == null || apiKey.isBlank()) {
-            System.err.println("Error: ANTHROPIC_API_KEY environment variable or --api-key flag is required.");
+            System.err.println("Error: Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable, or use --api-key flag.");
             System.exit(1);
         }
 
-        return new CliConfig(apiKey, model, sessionId, workingDirectory, baseUrl, maxTurns, permissionMode, tui);
+        return new CliConfig(apiKey, model, sessionId, workingDirectory, baseUrl, maxTurns, permissionMode, tui, provider);
     }
 }

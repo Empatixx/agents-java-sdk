@@ -20,7 +20,13 @@ public final class ChatCompletionsDto {
         Double temperature,
         @JsonProperty("top_p") Double topP,
         @JsonProperty("max_tokens") Integer maxTokens,
-        Boolean stream
+        Boolean stream,
+        @JsonProperty("stream_options") StreamOptions streamOptions
+    ) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record StreamOptions(
+        @JsonProperty("include_usage") Boolean includeUsage
     ) {}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -89,16 +95,27 @@ public final class ChatCompletionsDto {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record StreamChunk(
-        List<StreamChoice> choices
+        String id,
+        List<StreamChoice> choices,
+        ResponseUsage usage
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record StreamChoice(
-        StreamDelta delta
+        StreamDelta delta,
+        @JsonProperty("finish_reason") String finishReason
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record StreamDelta(
-        String content
+        String content,
+        @JsonProperty("tool_calls") List<StreamToolCall> toolCalls
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record StreamToolCall(
+        int index,
+        String id,
+        Function function
     ) {}
 }

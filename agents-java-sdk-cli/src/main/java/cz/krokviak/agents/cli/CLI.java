@@ -20,11 +20,8 @@ import cz.krokviak.agents.cli.plugin.PluginContextImpl;
 import cz.krokviak.agents.cli.plugin.Plugins;
 import cz.krokviak.agents.cli.repl.Repl;
 import cz.krokviak.agents.cli.task.TaskManager;
-import cz.krokviak.agents.cli.render.AnsiRenderer;
 import cz.krokviak.agents.cli.render.PlainRenderer;
 import cz.krokviak.agents.cli.render.Renderer;
-import cz.krokviak.agents.cli.render.Theme;
-import cz.krokviak.agents.cli.render.TuiRenderer;
 import cz.krokviak.agents.cli.skill.SkillLoader;
 import cz.krokviak.agents.cli.skill.SkillRegistry;
 import cz.krokviak.agents.cli.tool.*;
@@ -32,6 +29,7 @@ import cz.krokviak.agents.cli.tool.MemoryWriteTool;
 import cz.krokviak.agents.cli.tool.MemoryReadTool;
 import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
+import cz.krokviak.agents.model.OpenAIChatCompletionsModel;
 import cz.krokviak.agents.session.Session;
 import cz.krokviak.agents.session.SQLiteSession;
 import cz.krokviak.agents.tool.ExecutableTool;
@@ -45,7 +43,10 @@ public class CLI {
 
     public static void main(String[] args) {
         CliConfig config = CliConfig.parse(args);
-        Model model = new AnthropicModel(config.apiKey(), config.baseUrl(), config.model());
+        Model model = switch (config.provider()) {
+            case ANTHROPIC -> new AnthropicModel(config.apiKey(), config.baseUrl(), config.model());
+            case OPENAI -> new OpenAIChatCompletionsModel(config.apiKey(), config.baseUrl(), config.model());
+        };
         Path cwd = config.workingDirectory();
 
         // Memory store — ~/.claude/projects/<cwd-hash>/memory/
@@ -64,7 +65,7 @@ public class CLI {
             case "deny", "deny-all", "deny_all" -> PermissionManager.PermissionMode.DENY_ALL;
             default -> PermissionManager.PermissionMode.DEFAULT;
         };
-        PermissionManager permissionManager = new PermissionManager(permMode, null);
+        PermissionManager permissionManager = new PermissionManager(permMode);
 
         // Session
         Session session = null;
@@ -92,12 +93,15 @@ public class CLI {
         AgentRegistry agentRegistry = new AgentRegistry();
         TeamManager teamManager = new TeamManager();
 
-        // Context — choose renderer based on flags and TTY detection
+        // Context — choose renderer. TamboUI for interactive terminal, PlainRenderer for piped.
         Renderer output;
-        if (config.tui()) {
-            output = new TuiRenderer(Theme.dark());
-        } else if (System.console() != null) {
-            output = new AnsiRenderer(Theme.dark());
+        cz.krokviak.agents.cli.render.tui.CliApp cliApp = null;
+        if (System.console() != null) {
+            var state = new cz.krokviak.agents.cli.render.tui.CliState();
+            var outputLog = cz.krokviak.agents.cli.render.tui.OutputLogComponent.instance();
+            var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(state, outputLog);
+            cliApp = new cz.krokviak.agents.cli.render.tui.CliApp(state, tuiRenderer);
+            output = tuiRenderer;
         } else {
             output = new PlainRenderer();
         }
@@ -205,6 +209,6 @@ public class CLI {
 
         // Run
         AgentRunner runner = new AgentRunner(ctx, toolDispatcher, config.maxTurns());
-        new Repl(ctx, commands, runner).start();
+        new Repl(ctx, commands, runner, cliApp).start();
     }
 }

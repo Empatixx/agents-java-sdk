@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Pluggable renderer interface. Implementations may use ANSI codes (AnsiRenderer)
- * or produce plain text suitable for piped output (PlainRenderer).
+ * Pluggable renderer interface.
+ * Implementations: {@code tui.TuiRenderer} (TamboUI full-screen) and {@code PlainRenderer} (piped output).
  */
 public interface Renderer {
 
-    // --- From TerminalOutput ---
+    // --- Core output ---
 
     void startSpinner(String message);
 
@@ -35,7 +35,7 @@ public interface Renderer {
 
     void printPermissionDenied(String toolName);
 
-    // --- New rendering methods ---
+    // --- Rich rendering ---
 
     /**
      * Render a unified diff string with coloured +/- lines.

@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.permission;
 
-import java.io.BufferedReader;
-import java.io.IOException;
+import cz.krokviak.agents.cli.render.tui.PermissionDialog;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,12 +17,10 @@ public class PermissionManager {
     );
 
     private final PermissionMode mode;
-    private final BufferedReader reader;
     private final List<PermissionRule> sessionRules = new ArrayList<>();
 
-    public PermissionManager(PermissionMode mode, BufferedReader reader) {
+    public PermissionManager(PermissionMode mode) {
         this.mode = mode;
-        this.reader = reader;
     }
 
     public PermissionResult check(String toolName, Map<String, Object> args) {
@@ -30,7 +28,6 @@ public class PermissionManager {
         if (READ_ONLY_TOOLS.contains(toolName)) return PermissionResult.ALLOW;
         if (mode == PermissionMode.DENY_ALL) return PermissionResult.DENY;
 
-        // Check session rules
         String target = extractTarget(toolName, args);
         for (PermissionRule rule : sessionRules) {
             if (rule.matches(toolName, target)) {
@@ -39,7 +36,6 @@ public class PermissionManager {
             }
         }
 
-        // Ask user
         return promptUser(toolName, args, target);
     }
 
@@ -47,26 +43,23 @@ public class PermissionManager {
         String detail = target != null ? target : args.toString();
         if (detail.length() > 100) detail = detail.substring(0, 100) + "...";
 
-        System.out.print("\033[33m⚠ Allow " + toolName + "(" + detail + ")? [y/n/always] \033[0m");
-        System.out.flush();
+        String header = "⚠ Allow " + toolName + "(" + detail + ")?";
+        String[] options = {
+            "Yes, this time",
+            "Yes, always for " + toolName,
+            "No"
+        };
 
-        try {
-            String response = reader.readLine();
-            if (response == null) return PermissionResult.DENY;
-            response = response.trim().toLowerCase();
+        int selected = PermissionDialog.prompt(header, options);
 
-            return switch (response) {
-                case "y", "yes" -> PermissionResult.ALLOW;
-                case "always", "a" -> {
-                    sessionRules.add(new PermissionRule(toolName, "*", PermissionRule.Behavior.ALLOW));
-                    System.out.println("\033[2mAdded always-allow rule for " + toolName + "\033[0m");
-                    yield PermissionResult.ALLOW;
-                }
-                default -> PermissionResult.DENY;
-            };
-        } catch (IOException e) {
-            return PermissionResult.DENY;
-        }
+        return switch (selected) {
+            case 0 -> PermissionResult.ALLOW;
+            case 1 -> {
+                sessionRules.add(new PermissionRule(toolName, "*", PermissionRule.Behavior.ALLOW));
+                yield PermissionResult.ALLOW;
+            }
+            default -> PermissionResult.DENY;
+        };
     }
 
     private String extractTarget(String toolName, Map<String, Object> args) {
@@ -85,7 +78,6 @@ public class PermissionManager {
             return;
         }
         System.out.println("Permission mode: " + mode);
-        System.out.println("Session rules:");
         for (PermissionRule rule : sessionRules) {
             System.out.println("  " + rule.behavior() + " " + rule.toolName() +
                 (rule.pattern() != null ? " [" + rule.pattern() + "]" : ""));
