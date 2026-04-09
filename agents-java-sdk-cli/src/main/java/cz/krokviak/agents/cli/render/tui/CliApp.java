@@ -47,13 +47,23 @@ public final class CliApp extends ToolkitApp {
     @Override
     protected Element render() {
         // Command suggestions based on current input
-        List<CommandTrie.Match> suggestions = state.suggestCommands(inputState.text());
+        String input = inputState.text();
+        List<CommandTrie.Match> suggestions = state.suggestCommands(input);
+
+        // Ghost suffix: remaining chars of first match after what user typed
+        String ghostSuffix = null;
+        if (!suggestions.isEmpty() && input.startsWith("/") && input.length() > 1) {
+            String firstCmd = suggestions.getFirst().command();
+            String typed = input.substring(1); // strip "/"
+            if (firstCmd.startsWith(typed) && firstCmd.length() > typed.length()) {
+                ghostSuffix = firstCmd.substring(typed.length());
+            }
+        }
 
         return column(
             OutputLogComponent.render(state),
             SpinnerBarComponent.render(state),
-            SuggestionsComponent.render(suggestions),
-            InputAreaComponent.render(inputState, this::handleSubmit, event -> {
+            InputAreaComponent.render(inputState, ghostSuffix, this::handleSubmit, event -> {
                 if (event.isCtrlC()) { quit(); return EventResult.HANDLED; }
                 if (event.character() == 15) { // Ctrl+O
                     tuiRenderer.toggleExpandCollapse();
@@ -67,7 +77,7 @@ public final class CliApp extends ToolkitApp {
                 }
                 return EventResult.UNHANDLED;
             }),
-            StatusBarComponent.render(state)
+            InfoPanelComponent.render(state, suggestions)
         );
     }
 
