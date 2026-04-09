@@ -2,6 +2,7 @@ package cz.krokviak.agents.cli.render.tui;
 
 import dev.tamboui.toolkit.app.ToolkitApp;
 import dev.tamboui.toolkit.element.Element;
+import dev.tamboui.toolkit.elements.ListElement;
 import dev.tamboui.toolkit.event.EventResult;
 import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.widgets.input.TextInputState;
@@ -26,6 +27,9 @@ public final class CliApp extends ToolkitApp {
     private final BlockingQueue<String> inputQueue = new LinkedBlockingQueue<>();
     private final CountDownLatch ready = new CountDownLatch(1);
 
+    // Reusable list element for permission selection (avoids recreating each render)
+    private final ListElement<?> permissionList = list();
+
     public CliApp(CliState state, TuiRenderer tuiRenderer) {
         this.state = state;
         this.tuiRenderer = tuiRenderer;
@@ -46,15 +50,29 @@ public final class CliApp extends ToolkitApp {
 
     @Override
     protected Element render() {
-        // Command suggestions based on current input
+        // Permission prompt active → swap input area for selection list
+        if (state.hasPermissionPrompt()) {
+            return column(
+                OutputLogComponent.render(state),
+                SpinnerBarComponent.render(state),
+                PermissionSelectComponent.render(
+                    state.permissionHeader(),
+                    state.permissionOptions(),
+                    permissionList,
+                    tuiRenderer::resolvePermission
+                ),
+                InfoPanelComponent.render(state, List.of())
+            );
+        }
+
+        // Normal mode
         String input = inputState.text();
         List<CommandTrie.Match> suggestions = state.suggestCommands(input);
 
-        // Ghost suffix: remaining chars of first match after what user typed
         String ghostSuffix = null;
         if (!suggestions.isEmpty() && input.startsWith("/") && input.length() > 1) {
             String firstCmd = suggestions.getFirst().command();
-            String typed = input.substring(1); // strip "/"
+            String typed = input.substring(1);
             if (firstCmd.startsWith(typed) && firstCmd.length() > typed.length()) {
                 ghostSuffix = firstCmd.substring(typed.length());
             }
@@ -65,11 +83,10 @@ public final class CliApp extends ToolkitApp {
             SpinnerBarComponent.render(state),
             InputAreaComponent.render(inputState, ghostSuffix, this::handleSubmit, event -> {
                 if (event.isCtrlC()) { quit(); return EventResult.HANDLED; }
-                if (event.character() == 15) { // Ctrl+O
+                if (event.character() == 15) {
                     tuiRenderer.toggleExpandCollapse();
                     return EventResult.HANDLED;
                 }
-                // Tab completion: if suggestions, fill first match
                 if (event.isChar('\t') && !suggestions.isEmpty()) {
                     inputState.setText("/" + suggestions.getFirst().command());
                     inputState.moveCursorToEnd();
@@ -84,24 +101,8 @@ public final class CliApp extends ToolkitApp {
     private void handleSubmit() {
         String text = inputState.text().trim();
         if (text.isEmpty()) return;
-
         runner().runOnRenderThread(inputState::clear);
-
-        // If permission prompt is active, interpret input as response
-        if (tuiRenderer.hasPermissionPrompt()) {
-            int selection = switch (text.toLowerCase()) {
-                case "1", "y", "yes" -> 0;
-                case "2", "a", "always" -> 1;
-                case "3", "n", "no" -> 2;
-                default -> {
-                    try { yield Integer.parseInt(text) - 1; }
-                    catch (NumberFormatException e) { yield 2; } // deny
-                }
-            };
-            tuiRenderer.resolvePermission(selection);
-        } else {
-            inputQueue.offer(text);
-        }
+        inputQueue.offer(text);
     }
 
     /** Blocking read for the REPL. */

@@ -273,21 +273,11 @@ public final class TuiRenderer implements Renderer {
 
     /**
      * Show permission prompt in the UI and block until user responds.
-     * Called from REPL thread. Returns selected option index.
+     * Called from REPL thread. CliApp swaps the input area for a selection list.
+     * Returns selected option index.
      */
     public int promptPermission(String header, String[] options) {
-        onRenderThread(() -> {
-            outputLog.add(text(""));
-            outputLog.add(text(header).yellow().bold());
-            for (int i = 0; i < options.length; i++) {
-                outputLog.add(row(
-                    text("  " + (i + 1) + ") ").cyan().fit(),
-                    text(options[i]).fit()
-                ));
-            }
-            outputLog.add(text("  Enter 1-" + options.length + ", y=yes, a=always, n=no").dim());
-            state.setPermissionPrompt(header, options);
-        });
+        onRenderThread(() -> state.setPermissionPrompt(header, options));
 
         try {
             return permissionResult.take();
