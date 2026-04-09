@@ -11,12 +11,14 @@ public final class OutputLogComponent {
 
     private static final ListElement<?> LOG = list()
         .stickyScroll()
-        .scrollbar()
         .displayOnly();
 
     public static ListElement<?> instance() { return LOG; }
 
     public static Element render(CliState state) {
-        return LOG.fill();
+        return column(
+            spacer(),  // pushes content to bottom when few lines
+            LOG
+        ).fill();
     }
 }

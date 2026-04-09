@@ -7,6 +7,7 @@ import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.widgets.input.TextInputState;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -45,13 +46,23 @@ public final class CliApp extends ToolkitApp {
 
     @Override
     protected Element render() {
+        // Command suggestions based on current input
+        List<CommandTrie.Match> suggestions = state.suggestCommands(inputState.text());
+
         return column(
             OutputLogComponent.render(state),
             SpinnerBarComponent.render(state),
+            SuggestionsComponent.render(suggestions),
             InputAreaComponent.render(inputState, this::handleSubmit, event -> {
                 if (event.isCtrlC()) { quit(); return EventResult.HANDLED; }
                 if (event.character() == 15) { // Ctrl+O
                     tuiRenderer.toggleExpandCollapse();
+                    return EventResult.HANDLED;
+                }
+                // Tab completion: if suggestions, fill first match
+                if (event.isChar('\t') && !suggestions.isEmpty()) {
+                    inputState.setText("/" + suggestions.getFirst().command());
+                    inputState.moveCursorToEnd();
                     return EventResult.HANDLED;
                 }
                 return EventResult.UNHANDLED;

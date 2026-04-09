@@ -112,4 +112,18 @@ public final class CliState {
     public boolean hasCollapsed() { return !collapsedResults.isEmpty(); }
     public boolean isLastResultExpanded() { return lastResultExpanded; }
     public void setLastResultExpanded(boolean expanded) { this.lastResultExpanded = expanded; }
+
+    // ---- Command trie ----
+
+    private final CommandTrie commandTrie = new CommandTrie();
+
+    public CommandTrie commandTrie() { return commandTrie; }
+
+    public List<CommandTrie.Match> suggestCommands(String input) {
+        if (input == null || !input.startsWith("/") || input.length() < 2) {
+            return List.of();
+        }
+        String prefix = input.substring(1); // strip "/"
+        return commandTrie.search(prefix);
+    }
 }
