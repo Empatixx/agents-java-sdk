@@ -267,6 +267,45 @@ public final class TuiRenderer implements Renderer {
         });
     }
 
+    // ---- Permission prompt ----
+
+    private final java.util.concurrent.BlockingQueue<Integer> permissionResult = new java.util.concurrent.LinkedBlockingQueue<>();
+
+    /**
+     * Show permission prompt in the UI and block until user responds.
+     * Called from REPL thread. Returns selected option index.
+     */
+    public int promptPermission(String header, String[] options) {
+        onRenderThread(() -> {
+            outputLog.add(text(""));
+            outputLog.add(text(header).yellow().bold());
+            for (int i = 0; i < options.length; i++) {
+                outputLog.add(row(
+                    text("  " + (i + 1) + ") ").cyan().fit(),
+                    text(options[i]).fit()
+                ));
+            }
+            outputLog.add(text("  Enter 1-" + options.length + ", y=yes, a=always, n=no").dim());
+            state.setPermissionPrompt(header, options);
+        });
+
+        try {
+            return permissionResult.take();
+        } catch (InterruptedException e) {
+            return options.length - 1; // deny
+        }
+    }
+
+    /** Called by CliApp when user responds to permission prompt. */
+    public void resolvePermission(int selectedIndex) {
+        onRenderThread(() -> state.clearPermissionPrompt());
+        permissionResult.offer(selectedIndex);
+    }
+
+    public boolean hasPermissionPrompt() {
+        return state.hasPermissionPrompt();
+    }
+
     // ---- Helpers ----
 
     private String formatArgs(Map<String, Object> args) {

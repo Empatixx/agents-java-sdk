@@ -1,6 +1,6 @@
 package cz.krokviak.agents.cli.permission;
 
-import cz.krokviak.agents.cli.render.tui.PermissionDialog;
+import cz.krokviak.agents.cli.render.tui.TuiRenderer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,9 +18,14 @@ public class PermissionManager {
 
     private final PermissionMode mode;
     private final List<PermissionRule> sessionRules = new ArrayList<>();
+    private volatile TuiRenderer tuiRenderer;
 
     public PermissionManager(PermissionMode mode) {
         this.mode = mode;
+    }
+
+    public void setTuiRenderer(TuiRenderer tuiRenderer) {
+        this.tuiRenderer = tuiRenderer;
     }
 
     public PermissionResult check(String toolName, Map<String, Object> args) {
@@ -50,7 +55,22 @@ public class PermissionManager {
             "No"
         };
 
-        int selected = PermissionDialog.prompt(header, options);
+        int selected;
+        if (tuiRenderer != null) {
+            selected = tuiRenderer.promptPermission(header, options);
+        } else {
+            // Fallback for piped/plain mode
+            System.out.println(header);
+            for (int i = 0; i < options.length; i++) {
+                System.out.println("  " + (i + 1) + ") " + options[i]);
+            }
+            System.out.print("  > ");
+            try {
+                int c = System.in.read();
+                while (System.in.available() > 0) System.in.read();
+                selected = switch (c) { case '1', 'y' -> 0; case '2', 'a' -> 1; default -> 2; };
+            } catch (Exception e) { selected = 2; }
+        }
 
         return switch (selected) {
             case 0 -> PermissionResult.ALLOW;

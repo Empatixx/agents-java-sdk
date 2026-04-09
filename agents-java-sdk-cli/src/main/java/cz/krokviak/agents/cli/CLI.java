@@ -103,6 +103,7 @@ public class CLI {
             var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(tuiState, outputLog);
             cliApp = new cz.krokviak.agents.cli.render.tui.CliApp(tuiState, tuiRenderer);
             output = tuiRenderer;
+            permissionManager.setTuiRenderer(tuiRenderer);
         } else {
             output = new PlainRenderer();
         }

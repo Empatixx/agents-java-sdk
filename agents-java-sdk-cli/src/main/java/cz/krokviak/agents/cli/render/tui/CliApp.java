@@ -83,9 +83,24 @@ public final class CliApp extends ToolkitApp {
 
     private void handleSubmit() {
         String text = inputState.text().trim();
-        if (!text.isEmpty()) {
+        if (text.isEmpty()) return;
+
+        runner().runOnRenderThread(inputState::clear);
+
+        // If permission prompt is active, interpret input as response
+        if (tuiRenderer.hasPermissionPrompt()) {
+            int selection = switch (text.toLowerCase()) {
+                case "1", "y", "yes" -> 0;
+                case "2", "a", "always" -> 1;
+                case "3", "n", "no" -> 2;
+                default -> {
+                    try { yield Integer.parseInt(text) - 1; }
+                    catch (NumberFormatException e) { yield 2; } // deny
+                }
+            };
+            tuiRenderer.resolvePermission(selection);
+        } else {
             inputQueue.offer(text);
-            runner().runOnRenderThread(inputState::clear);
         }
     }
 

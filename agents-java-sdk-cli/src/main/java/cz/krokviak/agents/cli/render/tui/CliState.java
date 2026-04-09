@@ -113,6 +113,25 @@ public final class CliState {
     public boolean isLastResultExpanded() { return lastResultExpanded; }
     public void setLastResultExpanded(boolean expanded) { this.lastResultExpanded = expanded; }
 
+    // ---- Permission prompt ----
+
+    private String permissionHeader;
+    private String[] permissionOptions;
+
+    public void setPermissionPrompt(String header, String[] options) {
+        this.permissionHeader = header;
+        this.permissionOptions = options;
+    }
+
+    public void clearPermissionPrompt() {
+        this.permissionHeader = null;
+        this.permissionOptions = null;
+    }
+
+    public boolean hasPermissionPrompt() { return permissionOptions != null; }
+    public String permissionHeader() { return permissionHeader; }
+    public String[] permissionOptions() { return permissionOptions; }
+
     // ---- Command trie ----
 
     private final CommandTrie commandTrie = new CommandTrie();
