@@ -24,7 +24,7 @@ public final class InfoPanelComponent {
             row(spacer(2), text("📋 PLAN MODE").bold().yellow().fit(), text(" — read-only tools only").dim().fit(), spacer()),
             row(spacer(2), text("Plan: ").dim().fit(), text(slug).fit(), spacer()),
             text(""),
-            row(spacer(2), text("Ctrl+G or /plan to exit · Ctrl+O to expand results").dim().fit(), spacer()),
+            row(spacer(2), text("Shift+Tab or /plan to exit · Ctrl+O to expand results").dim().fit(), spacer()),
             text("")
         ).length(HEIGHT);
     }

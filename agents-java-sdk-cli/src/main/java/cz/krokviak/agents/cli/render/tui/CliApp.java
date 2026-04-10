@@ -42,6 +42,10 @@ public final class CliApp extends ToolkitApp {
     @Override
     protected TuiConfig configure() {
         appBindings = dev.tamboui.tui.bindings.BindingSets.standard().toBuilder()
+            // Remove Tab from focus navigation — we have one input, don't need focus cycling
+            .unbind(dev.tamboui.tui.bindings.Actions.FOCUS_NEXT)
+            .unbind(dev.tamboui.tui.bindings.Actions.FOCUS_PREVIOUS)
+            // Bind Shift+Tab to plan mode
             .bind(dev.tamboui.tui.bindings.KeyTrigger.key(
                 dev.tamboui.tui.event.KeyCode.TAB, true, false, false), "planMode")
             .bind(dev.tamboui.tui.bindings.KeyTrigger.ctrl('o'), "expandCollapse")
@@ -58,11 +62,15 @@ public final class CliApp extends ToolkitApp {
 
         runner().eventRouter().addGlobalHandler(event -> {
             if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
-            if (!key.hasCtrl()) return EventResult.UNHANDLED;
-            // Ctrl+G = toggle plan mode
-            if (key.character() == 'g') { togglePlanMode(); return EventResult.HANDLED; }
+            // Shift+Tab = plan mode toggle
+            if (key.isKey(dev.tamboui.tui.event.KeyCode.TAB) && key.hasShift()) {
+                togglePlanMode();
+                return EventResult.HANDLED;
+            }
+            // Ctrl+G = plan mode toggle (fallback)
+            if (key.hasCtrl() && key.character() == 'g') { togglePlanMode(); return EventResult.HANDLED; }
             // Ctrl+O = expand/collapse
-            if (key.character() == 'o') { renderer.toggleExpand(); return EventResult.HANDLED; }
+            if (key.hasCtrl() && key.character() == 'o') { renderer.toggleExpand(); return EventResult.HANDLED; }
             return EventResult.UNHANDLED;
         });
 
