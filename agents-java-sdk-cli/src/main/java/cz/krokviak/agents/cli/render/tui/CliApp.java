@@ -59,8 +59,7 @@ public final class CliApp extends ToolkitApp {
                     renderer.toggleExpand();
                     return EventResult.HANDLED;
                 }
-                if (event.isChar('\t')) {
-                    // Tab: toggle plan mode if input empty, autocomplete if typing /
+                if (event.isChar('\t') || event.isKey(dev.tamboui.tui.event.KeyCode.TAB)) {
                     if (inputState.text().isEmpty()) {
                         togglePlanMode();
                         return EventResult.HANDLED;
