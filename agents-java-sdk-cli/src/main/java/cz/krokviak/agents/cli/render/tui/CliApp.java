@@ -60,8 +60,8 @@ public final class CliApp extends ToolkitApp {
         // Tab/Shift+Tab are consumed by focus routing and never reach here
         runner().eventRouter().addGlobalHandler(event -> {
             if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
-            // Ctrl+L (char 12) = toggle plan mode
-            if (key.character() == 12) { togglePlanMode(); return EventResult.HANDLED; }
+            // Ctrl+G (char 7) = toggle plan mode
+            if (key.character() == 7) { togglePlanMode(); return EventResult.HANDLED; }
             // Ctrl+O (char 15) = expand/collapse
             if (key.character() == 15) { renderer.toggleExpand(); return EventResult.HANDLED; }
             return EventResult.UNHANDLED;
