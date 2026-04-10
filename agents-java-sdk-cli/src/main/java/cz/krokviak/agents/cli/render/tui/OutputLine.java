@@ -30,7 +30,7 @@ public sealed interface OutputLine {
 
     record UserMessage(String content) implements OutputLine {
         public StyledElement<?> render() {
-            return row(text(" ❯ ").bold().cyan().fit(), text(content).bold().fit())
+            return row(text(" ❯ ").bold().cyan().fit(), text(content).fit())
                 .bg(Color.indexed(238));
         }
     }
