@@ -62,15 +62,9 @@ public final class CliApp extends ToolkitApp {
 
         runner().eventRouter().addGlobalHandler(event -> {
             if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
-            // Shift+Tab = plan mode toggle
-            if (key.isKey(dev.tamboui.tui.event.KeyCode.TAB) && key.hasShift()) {
-                togglePlanMode();
-                return EventResult.HANDLED;
-            }
-            // Ctrl+G = plan mode toggle (fallback)
-            if (key.hasCtrl() && key.character() == 'g') { togglePlanMode(); return EventResult.HANDLED; }
-            // Ctrl+O = expand/collapse
-            if (key.hasCtrl() && key.character() == 'o') { renderer.toggleExpand(); return EventResult.HANDLED; }
+            if (!key.hasCtrl()) return EventResult.UNHANDLED;
+            if (key.character() == 'g') { togglePlanMode(); return EventResult.HANDLED; }
+            if (key.character() == 'o') { renderer.toggleExpand(); return EventResult.HANDLED; }
             return EventResult.UNHANDLED;
         });
 

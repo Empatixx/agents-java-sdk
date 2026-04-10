@@ -120,6 +120,7 @@ public class CLI {
         // Hooks (plan mode → guardrail → permission, in order)
         Hooks hooks = new Hooks();
         var planStore = new cz.krokviak.agents.cli.plan.PlanStore();
+        ctx.setPlanStore(planStore);
         hooks.register(new PlanModeHook(planStore));
         hooks.register(new GuardrailHook());
         hooks.register(new PermissionHook(permissionManager));

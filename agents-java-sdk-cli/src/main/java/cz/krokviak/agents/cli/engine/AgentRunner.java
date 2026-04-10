@@ -40,7 +40,15 @@ public class AgentRunner {
                     ctx.history().addAll(compacted);
                 }
 
-                LlmContext llmCtx = new LlmContext(ctx.systemPrompt(), List.copyOf(ctx.history()),
+                // Inject plan mode instructions into system prompt if active
+                String systemPrompt = ctx.systemPrompt();
+                if (ctx.isPlanMode() && ctx.planStore() != null) {
+                    String planPath = ctx.planStore().currentPlanPath();
+                    if (planPath == null) planPath = "~/.claude/plans/<plan>.md";
+                    systemPrompt += "\n\n" + cz.krokviak.agents.cli.plan.PlanPrompts.planModeInstructions(planPath);
+                }
+
+                LlmContext llmCtx = new LlmContext(systemPrompt, List.copyOf(ctx.history()),
                     toolDispatcher.definitions(), null, ctx.modelSettings());
 
                 // Streaming with eager tool execution

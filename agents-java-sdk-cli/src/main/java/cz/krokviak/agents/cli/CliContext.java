@@ -94,4 +94,8 @@ public final class CliContext {
         if (planModeListener != null) planModeListener.run();
     }
     public void onPlanModeChange(Runnable listener) { this.planModeListener = listener; }
+
+    private cz.krokviak.agents.cli.plan.PlanStore planStore;
+    public void setPlanStore(cz.krokviak.agents.cli.plan.PlanStore store) { this.planStore = store; }
+    public cz.krokviak.agents.cli.plan.PlanStore planStore() { return planStore; }
 }
