@@ -67,14 +67,17 @@ public final class TuiRenderer implements Renderer {
     public void printToolCall(String name, Map<String, Object> args) {
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
-            outputLog.add(row(
-                text("● ").green().fit(),
-                text(name).bold().fit(),
-                text("(" + inlineArgs + ")").dim().fit()
-            ));
-            // Feed to agent activity tracker if agent is running
             if (state.activeAgentName() != null) {
+                // Agent running — only update info panel, don't spam output log
                 state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
+            } else {
+                // Normal mode — show in output log
+                outputLog.add(row(
+                    spacer(2),
+                    text("● ").green().fit(),
+                    text(name).bold().fit(),
+                    text("(" + inlineArgs + ")").dim().fit()
+                ));
             }
         });
     }
@@ -82,18 +85,20 @@ public final class TuiRenderer implements Renderer {
     @Override
     public void printToolResult(String name, String output) {
         if (output == null || output.isEmpty()) return;
+        // Suppress tool results in output log when agent is running
+        if (state.activeAgentName() != null) return;
         String[] lines = output.split("\n", -1);
         onRenderThread(() -> {
             if (lines.length <= CliState.COLLAPSED_PREVIEW_LINES) {
                 for (String line : lines) {
-                    outputLog.add(text("  ⎿  " + line).dim());
+                    outputLog.add(row(spacer(2), text("⎿  " + line).dim().fit()));
                 }
             } else {
                 for (int i = 0; i < CliState.COLLAPSED_PREVIEW_LINES; i++) {
-                    outputLog.add(text("  ⎿  " + lines[i]).dim());
+                    outputLog.add(row(spacer(2), text("⎿  " + lines[i]).dim().fit()));
                 }
-                outputLog.add(text("  ⎿  (" + (lines.length - CliState.COLLAPSED_PREVIEW_LINES)
-                    + " more lines, ctrl+o to expand)").dim());
+                outputLog.add(row(spacer(2), text("⎿  (" + (lines.length - CliState.COLLAPSED_PREVIEW_LINES)
+                    + " more lines, ctrl+o to expand)").dim().fit()));
                 state.pushCollapsed(new CliState.CollapsedResult(output, lines.length));
             }
         });
@@ -101,31 +106,32 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void printToolTiming(long startNanos) {
+        if (state.activeAgentName() != null) return;
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
-        onRenderThread(() -> outputLog.add(text("  ⎿  (" + ms + "ms)").dim()));
+        onRenderThread(() -> outputLog.add(row(spacer(2), text("⎿  (" + ms + "ms)").dim().fit())));
     }
 
     @Override
     public void printTextDelta(String delta) {
         onRenderThread(() -> {
             state.appendStreaming(delta);
-            state.flushStreamingBuffer(line -> outputLog.add(line));
+            state.flushStreamingBuffer(line -> outputLog.add(row(spacer(2), text(line).fit())));
         });
     }
 
     @Override
     public void printError(String message) {
-        onRenderThread(() -> outputLog.add(text("✗ " + message).red().bold()));
+        onRenderThread(() -> outputLog.add(row(spacer(2), text("✗ " + message).red().bold().fit())));
     }
 
     @Override
     public void printPrompt() {
-        onRenderThread(() -> state.flushAll(line -> outputLog.add(line)));
+        onRenderThread(() -> state.flushAll(line -> outputLog.add(row(spacer(2), text(line).fit()))));
     }
 
     @Override
     public void printPromptWithCost(String costInfo) {
-        onRenderThread(() -> state.flushAll(line -> outputLog.add(line)));
+        onRenderThread(() -> state.flushAll(line -> outputLog.add(row(spacer(2), text(line).fit()))));
     }
 
     @Override
@@ -139,12 +145,13 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void println(String textStr) {
-        onRenderThread(() -> outputLog.add(textStr));
+        onRenderThread(() -> outputLog.add(row(spacer(2), text(textStr).fit())));
     }
 
     @Override
     public void printPermissionDenied(String toolName) {
         onRenderThread(() -> outputLog.add(row(
+            spacer(2),
             text("⚠ Permission denied: ").yellow().fit(),
             text(toolName).bold().fit()
         )));
@@ -174,7 +181,7 @@ public final class TuiRenderer implements Renderer {
                 case COMPLETED -> text(icon + " ").green().fit();
                 case FAILED -> text(icon + " ").red().fit();
             };
-            outputLog.add(row(iconEl, text(name).bold().fit(), text("(" + formatArgs(args) + ")").dim().fit()));
+            outputLog.add(row(spacer(2), iconEl, text(name).bold().fit(), text("(" + formatArgs(args) + ")").dim().fit()));
         });
     }
 
@@ -192,6 +199,7 @@ public final class TuiRenderer implements Renderer {
                 state.clearActiveAgent();
             }
             outputLog.add(row(
+                spacer(2),
                 text(icon + " ").cyan().fit(),
                 text(agentName).bold().fit(),
                 text(" — " + status.name().toLowerCase()).dim().fit(),
@@ -278,9 +286,9 @@ public final class TuiRenderer implements Renderer {
             // Show full output, skipping the preview lines already shown
             String[] lines = cr.output().split("\n", -1);
             for (int i = CliState.COLLAPSED_PREVIEW_LINES; i < lines.length; i++) {
-                outputLog.add(text("  ⎿  " + lines[i]).dim());
+                outputLog.add(row(spacer(2), text("⎿  " + lines[i]).dim().fit()));
             }
-            outputLog.add(text("  ⎿  (expanded " + lines.length + " lines)").dim());
+            outputLog.add(row(spacer(2), text("⎿  (expanded " + lines.length + " lines)").dim().fit()));
         });
     }
 
