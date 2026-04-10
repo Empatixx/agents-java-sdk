@@ -155,6 +155,8 @@ public class AgentSpawner {
                     .findFirst().orElse(null);
                 String result = tool != null ? executeSafe(tool, tc.arguments()) : "Error: unknown tool " + tc.name();
                 history.add(new InputItem.ToolResult(tc.id(), tc.name(), result));
+                // Show tool result in output log
+                ctx.output().printToolResult(tc.name(), result);
                 if (progress != null) progress.addToolUse();
                 agent.addToolUse();
                 if (progress != null) {

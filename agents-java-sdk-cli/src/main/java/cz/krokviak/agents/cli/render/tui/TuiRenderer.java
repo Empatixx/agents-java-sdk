@@ -55,14 +55,14 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void printToolCall(String name, Map<String, Object> args) {
-        // Agent tool handled by renderAgentStatus — skip to avoid duplicate
-        if ("agent".equals(name)) return;
+        if ("agent".equals(name)) return; // agent shown via renderAgentStatus
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
+            // Always add to output log (indented when inside agent)
+            state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING));
+            // Also feed info panel when agent active
             if (state.activeAgentName() != null) {
                 state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
-            } else {
-                state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING));
             }
         });
     }
@@ -70,7 +70,7 @@ public final class TuiRenderer implements Renderer {
     @Override
     public void printToolResult(String name, String output) {
         if (output == null || output.isEmpty()) return;
-        if (state.activeAgentName() != null || "agent".equals(name)) return;
+        if ("agent".equals(name)) return;
         String[] lines = output.split("\n", -1);
         onRenderThread(() -> {
             // Update tool call status to completed
@@ -92,7 +92,6 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void printToolTiming(long startNanos) {
-        if (state.activeAgentName() != null) return;
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
         onRenderThread(() -> state.addLine(new OutputLine.Timing(ms)));
     }
