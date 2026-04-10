@@ -13,7 +13,7 @@ public final class InputAreaComponent {
     public static Element render(TextInputState inputState, boolean planMode,
                                  Runnable onSubmit, KeyEventHandler extraKeys) {
         Color borderColor = planMode ? Color.YELLOW : Color.CYAN;
-        String title = planMode ? "plan" : "❯";
+        String title = "❯";
         return row(
             spacer(1),
             panel(
