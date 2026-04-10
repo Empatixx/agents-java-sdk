@@ -111,6 +111,11 @@ public class CLI {
             output, permissionManager, compactor, cwd, systemPrompt, session, config.sessionId(),
             taskManager, mailboxManager);
 
+        // Store TuiRenderer on context for ExitPlanModeTool
+        if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {
+            ctx.setTuiRenderer(tr);
+        }
+
         // Sync plan mode state to CliController for TUI display
         if (ctrl != null) {
             final var fCtrl = ctrl;

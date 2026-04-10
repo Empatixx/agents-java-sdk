@@ -98,4 +98,8 @@ public final class CliContext {
     private cz.krokviak.agents.cli.plan.PlanStore planStore;
     public void setPlanStore(cz.krokviak.agents.cli.plan.PlanStore store) { this.planStore = store; }
     public cz.krokviak.agents.cli.plan.PlanStore planStore() { return planStore; }
+
+    private cz.krokviak.agents.cli.render.tui.TuiRenderer tuiRenderer;
+    public void setTuiRenderer(cz.krokviak.agents.cli.render.tui.TuiRenderer r) { this.tuiRenderer = r; }
+    public cz.krokviak.agents.cli.render.tui.TuiRenderer tuiRenderer() { return tuiRenderer; }
 }

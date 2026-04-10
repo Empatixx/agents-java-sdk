@@ -27,32 +27,59 @@ public class ExitPlanModeTool implements ExecutableTool {
 
     @Override
     public ToolOutput execute(ToolArgs args, ToolContext<?> toolCtx) {
-        ctx.setPlanMode(false);
-
         String slug = planStore.currentSlug();
         String planContent = null;
         if (slug != null) {
             try { planContent = planStore.loadPlan(slug); } catch (Exception ignored) {}
         }
 
-        if (planContent != null && !planContent.isBlank()) {
-            ctx.output().println("");
-            ctx.output().println("╭──── 📋 Plan: " + slug + " ────");
-            for (String line : planContent.split("\n")) {
-                ctx.output().println("│ " + line);
-            }
-            ctx.output().println("╰" + "─".repeat(50));
-            ctx.output().println("");
-            ctx.output().println("Type 'ok' to approve and implement, or provide feedback to refine.");
-
-            return ToolOutput.text(
-                "Plan shown to user. STOP and wait for user response.\n" +
-                "- If user says 'ok' or 'approve': implement the plan.\n" +
-                "- If user provides feedback: re-enter plan mode and update the plan.\n" +
-                "DO NOT proceed with implementation until user approves.");
-        } else {
-            ctx.output().println("✓ Plan mode off — all tools available");
-            return ToolOutput.text("Plan mode deactivated. No plan file found.");
+        if (planContent == null || planContent.isBlank()) {
+            ctx.setPlanMode(false);
+            return ToolOutput.text("Plan mode off. No plan found.");
         }
+
+        // Show plan in output
+        ctx.output().println("");
+        ctx.output().println("╭──── 📋 Plan: " + slug + " ────");
+        for (String line : planContent.split("\n")) {
+            ctx.output().println("│ " + line);
+        }
+        ctx.output().println("╰" + "─".repeat(50));
+
+        // Use permission prompt UI for approval
+        var renderer = ctx.tuiRenderer();
+        if (renderer != null) {
+            {
+                String[] options = {
+                    "Approve — implement the plan",
+                    "Reject — provide feedback to refine",
+                    "Cancel — discard plan"
+                };
+                int selected = renderer.promptPermission("📋 " + slug, options);
+
+                switch (selected) {
+                    case 0 -> {
+                        ctx.setPlanMode(false);
+                        return ToolOutput.text("User APPROVED the plan. Implement it now.\n\nPlan:\n" + planContent);
+                    }
+                    case 1 -> {
+                        // Stay in plan mode, user will type feedback
+                        return ToolOutput.text("User REJECTED the plan. Stay in plan mode. " +
+                            "Wait for user feedback — they will tell you what to change. " +
+                            "Then update the plan and call exit_plan_mode again.");
+                    }
+                    default -> {
+                        ctx.setPlanMode(false);
+                        return ToolOutput.text("Plan cancelled by user.");
+                    }
+                }
+            }
+        }
+
+        // Fallback: no TUI renderer
+        ctx.setPlanMode(false);
+        ctx.output().println("Type 'ok' to approve or provide feedback.");
+        return ToolOutput.text("Plan shown. Wait for user response.");
     }
+
 }
