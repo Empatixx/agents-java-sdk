@@ -1,15 +1,16 @@
-agents-java-sdk-anthropic
-agents-java-sdk-cli
-agents-java-sdk-core
-agents-java-sdk-mcp
-agents-java-sdk-openai
-agents-java-sdk-sessions
-docs
-examples
-excalidraw.log
-LICENSE
-ls_vystup.txt
-mvnw
-mvnw.cmd
-pom.xml
-test.txt
+total 80K
+drwxrwxr-x 4 krokviak krokviak 4.0K Apr  8 22:42 agents-java-sdk-anthropic
+drwxrwxr-x 4 krokviak krokviak 4.0K Apr  9 23:29 agents-java-sdk-cli
+drwxrwxr-x 4 krokviak krokviak 4.0K Apr  8 22:42 agents-java-sdk-core
+drwxrwxr-x 4 krokviak krokviak 4.0K Apr  8 22:42 agents-java-sdk-mcp
+drwxrwxr-x 4 krokviak krokviak 4.0K Apr  8 22:42 agents-java-sdk-openai
+drwxrwxr-x 4 krokviak krokviak 4.0K Apr  8 22:42 agents-java-sdk-sessions
+drwxrwxr-x 3 krokviak krokviak 4.0K Mar 31 19:00 docs
+drwxrwxr-x 4 krokviak krokviak 4.0K Apr  8 22:42 examples
+-rw-rw-r-- 1 krokviak krokviak 3.0K Apr 10 18:08 excalidraw.log
+-rw-rw-r-- 1 krokviak krokviak 1.1K Mar 29 22:53 LICENSE
+-rw-rw-r-- 1 krokviak krokviak  217 Apr 10 20:58 ls_vystup.txt
+-rwxrwxr-x 1 krokviak krokviak  12K Mar 29 22:53 mvnw
+-rw-rw-r-- 1 krokviak krokviak 8.3K Mar 29 22:53 mvnw.cmd
+-rw-rw-r-- 1 krokviak krokviak 4.8K Mar 31 18:30 pom.xml
+-rw-rw-r-- 1 krokviak krokviak   26 Apr 10 18:55 test.txt

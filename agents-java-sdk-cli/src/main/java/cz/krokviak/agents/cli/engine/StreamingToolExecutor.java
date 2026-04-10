@@ -83,9 +83,6 @@ public class StreamingToolExecutor {
 
             if (pending != null) {
                 // Concurrent-safe: was already running; just await result
-                if (total > 1) {
-                    ctx.output().renderProgress("Tools", i, total);
-                }
                 try {
                     result = pending.get(TOOL_EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 } catch (Exception e) {
@@ -119,9 +116,7 @@ public class StreamingToolExecutor {
             }
         }
 
-        if (total > 1) {
-            ctx.output().renderProgress("Tools", total, total);
-        }
+        // progress tracking removed — tool calls shown individually
         return results;
     }
 

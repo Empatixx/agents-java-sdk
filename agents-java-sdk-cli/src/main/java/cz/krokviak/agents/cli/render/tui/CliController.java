@@ -182,27 +182,49 @@ public final class CliController {
     public String firstActiveAgent() { return agents.isEmpty() ? null : agents.keySet().iterator().next(); }
     public Collection<AgentInfo> activeAgents() { return agents.values(); }
 
-    /** Insert a line right after the last line belonging to the given agent. */
+    /** Insert a line right after the given agent's block, keeping max 2 tool calls per agent. */
     public void addLineAfterAgent(String agentName, OutputLine line) {
-        // Find last line for this agent (Agent line or indented ToolCall/CollapseHint after it)
-        int insertPos = lines.size(); // default: end
+        int agentIdx = -1;
         for (int i = lines.size() - 1; i >= 0; i--) {
-            var l = lines.get(i);
-            if (l instanceof OutputLine.Agent a && a.name().equals(agentName)) {
-                // Insert after this agent's block (skip past following tool calls)
-                insertPos = i + 1;
-                while (insertPos < lines.size()) {
-                    var next = lines.get(insertPos);
-                    if (next instanceof OutputLine.ToolCall tc && tc.indented()) insertPos++;
-                    else if (next instanceof OutputLine.CollapseHint) insertPos++;
-                    else if (next instanceof OutputLine.Timing) insertPos++;
-                    else break;
-                }
+            if (lines.get(i) instanceof OutputLine.Agent a && a.name().equals(agentName)) {
+                agentIdx = i;
                 break;
             }
         }
-        lines.add(insertPos, line);
-        if (lines.size() > MAX_LINES) lines.subList(0, lines.size() - MAX_LINES).clear();
+        if (agentIdx < 0) { lines.add(line); return; }
+
+        // Find end of this agent's block
+        int blockEnd = agentIdx + 1;
+        while (blockEnd < lines.size()) {
+            var next = lines.get(blockEnd);
+            if (next instanceof OutputLine.ToolCall tc && tc.indented()) blockEnd++;
+            else if (next instanceof OutputLine.CollapseHint) blockEnd++;
+            else if (next instanceof OutputLine.Timing) blockEnd++;
+            else break;
+        }
+
+        // Count tool calls in this agent's block
+        int toolCount = 0;
+        for (int i = agentIdx + 1; i < blockEnd; i++) {
+            if (lines.get(i) instanceof OutputLine.ToolCall) toolCount++;
+        }
+
+        // Remove oldest tool call groups if >= MAX_VISIBLE_TOOLS
+        while (toolCount >= MAX_VISIBLE_TOOLS) {
+            for (int i = agentIdx + 1; i < blockEnd; i++) {
+                if (lines.get(i) instanceof OutputLine.ToolCall) {
+                    lines.remove(i); blockEnd--;
+                    if (i < blockEnd && lines.get(i) instanceof OutputLine.CollapseHint) {
+                        lines.remove(i); blockEnd--;
+                    }
+                    toolCount--;
+                    break;
+                }
+            }
+        }
+
+        // Insert at end of block
+        lines.add(blockEnd, line);
     }
 
     // ========================= Command trie =========================
