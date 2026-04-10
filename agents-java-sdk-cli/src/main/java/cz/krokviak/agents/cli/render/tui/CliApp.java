@@ -113,11 +113,7 @@ public final class CliApp extends ToolkitApp {
             }
 
             // Show user message in output log
-            OutputLogComponent.instance().add(row(
-                spacer(2),
-                text("❯ ").bold().cyan().fit(),
-                text(text).bold().fit()
-            ));
+            state.addLine(new OutputLine.UserMessage(text));
         });
 
         if (!tuiRenderer.hasPermissionPrompt()) {

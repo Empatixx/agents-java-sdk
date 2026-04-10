@@ -99,8 +99,7 @@ public class CLI {
         cz.krokviak.agents.cli.render.tui.CliState tuiState = null;
         if (System.console() != null) {
             tuiState = new cz.krokviak.agents.cli.render.tui.CliState();
-            var outputLog = cz.krokviak.agents.cli.render.tui.OutputLogComponent.instance();
-            var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(tuiState, outputLog);
+            var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(tuiState);
             cliApp = new cz.krokviak.agents.cli.render.tui.CliApp(tuiState, tuiRenderer);
             output = tuiRenderer;
             permissionManager.setTuiRenderer(tuiRenderer);

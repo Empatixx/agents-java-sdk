@@ -5,37 +5,30 @@ import cz.krokviak.agents.cli.render.BoxStyle;
 import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.render.ToolCallStatus;
 import dev.tamboui.toolkit.app.ToolkitRunner;
-import dev.tamboui.toolkit.elements.ListElement;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import static dev.tamboui.toolkit.Toolkit.*;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * Thread-safe Renderer implementation that bridges AgentRunner calls (on REPL thread)
- * to CliState mutations (on render thread).
- *
- * <p>Before runner is set, mutations are buffered. After runner is set, mutations
- * are dispatched via {@code runner.runOnRenderThread()}.
+ * Thread-safe Renderer → CliState bridge.
+ * All methods mutate CliState via runOnRenderThread().
+ * OutputLine types enable in-place updates (reactive list).
  */
 public final class TuiRenderer implements Renderer {
 
     private final CliState state;
-    private final ListElement<?> outputLog;
     private volatile ToolkitRunner runner;
     private final ConcurrentLinkedQueue<Runnable> pendingBeforeReady = new ConcurrentLinkedQueue<>();
 
-    public TuiRenderer(CliState state, ListElement<?> outputLog) {
+    public TuiRenderer(CliState state) {
         this.state = state;
-        this.outputLog = outputLog;
     }
 
-    /** Called once by CliApp.onStart() after runner is initialized. */
     public void activate(ToolkitRunner runner) {
         this.runner = runner;
-        // Drain buffered mutations
         Runnable r;
         while ((r = pendingBeforeReady.poll()) != null) {
             runner.runOnRenderThread(r);
@@ -44,14 +37,11 @@ public final class TuiRenderer implements Renderer {
 
     private void onRenderThread(Runnable action) {
         ToolkitRunner r = runner;
-        if (r != null) {
-            r.runOnRenderThread(action);
-        } else {
-            pendingBeforeReady.add(action);
-        }
+        if (r != null) r.runOnRenderThread(action);
+        else pendingBeforeReady.add(action);
     }
 
-    // ========================= Renderer methods =========================
+    // ========================= Core output =========================
 
     @Override
     public void startSpinner(String message) {
@@ -68,16 +58,9 @@ public final class TuiRenderer implements Renderer {
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
             if (state.activeAgentName() != null) {
-                // Agent running — only update info panel, don't spam output log
                 state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
             } else {
-                // Normal mode — show in output log
-                outputLog.add(row(
-                    spacer(2),
-                    text("● ").green().fit(),
-                    text(name).bold().fit(),
-                    text("(" + inlineArgs + ")").dim().fit()
-                ));
+                state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING));
             }
         });
     }
@@ -85,20 +68,21 @@ public final class TuiRenderer implements Renderer {
     @Override
     public void printToolResult(String name, String output) {
         if (output == null || output.isEmpty()) return;
-        // Suppress tool results in output log when agent is running
         if (state.activeAgentName() != null) return;
         String[] lines = output.split("\n", -1);
         onRenderThread(() -> {
+            // Update tool call status to completed
+            state.updateLast(OutputLine.ToolCall.class, tc -> tc.withStatus(ToolCallStatus.COMPLETED));
+
             if (lines.length <= CliState.COLLAPSED_PREVIEW_LINES) {
                 for (String line : lines) {
-                    outputLog.add(row(spacer(2), text("⎿  " + line).dim().fit()));
+                    state.addLine(new OutputLine.Result(line));
                 }
             } else {
                 for (int i = 0; i < CliState.COLLAPSED_PREVIEW_LINES; i++) {
-                    outputLog.add(row(spacer(2), text("⎿  " + lines[i]).dim().fit()));
+                    state.addLine(new OutputLine.Result(lines[i]));
                 }
-                outputLog.add(row(spacer(2), text("⎿  (" + (lines.length - CliState.COLLAPSED_PREVIEW_LINES)
-                    + " more lines, ctrl+o to expand)").dim().fit()));
+                state.addLine(new OutputLine.CollapseHint(lines.length - CliState.COLLAPSED_PREVIEW_LINES));
                 state.pushCollapsed(new CliState.CollapsedResult(output, lines.length));
             }
         });
@@ -108,126 +92,101 @@ public final class TuiRenderer implements Renderer {
     public void printToolTiming(long startNanos) {
         if (state.activeAgentName() != null) return;
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
-        onRenderThread(() -> outputLog.add(row(spacer(2), text("⎿  (" + ms + "ms)").dim().fit())));
+        onRenderThread(() -> state.addLine(new OutputLine.Timing(ms)));
     }
 
     @Override
     public void printTextDelta(String delta) {
         onRenderThread(() -> {
             state.appendStreaming(delta);
-            state.flushStreamingBuffer(line -> outputLog.add(row(spacer(2), text(line).fit())));
+            state.flushStreamingBuffer(line -> state.addLine(new OutputLine.Text(line)));
         });
     }
 
     @Override
     public void printError(String message) {
-        onRenderThread(() -> outputLog.add(row(spacer(2), text("✗ " + message).red().bold().fit())));
+        onRenderThread(() -> state.addLine(new OutputLine.Error(message)));
     }
 
     @Override
     public void printPrompt() {
-        onRenderThread(() -> state.flushAll(line -> outputLog.add(row(spacer(2), text(line).fit()))));
+        onRenderThread(() -> state.flushAll(line -> state.addLine(new OutputLine.Text(line))));
     }
 
     @Override
     public void printPromptWithCost(String costInfo) {
-        onRenderThread(() -> state.flushAll(line -> outputLog.add(row(spacer(2), text(line).fit()))));
+        onRenderThread(() -> state.flushAll(line -> state.addLine(new OutputLine.Text(line))));
     }
 
     @Override
     public void printUsage(String formatted) {
         onRenderThread(() -> {
             for (String line : formatted.split("\n")) {
-                outputLog.add(text(line).dim());
+                state.addLine(new OutputLine.Dim(line));
             }
         });
     }
 
     @Override
     public void println(String textStr) {
-        onRenderThread(() -> outputLog.add(row(spacer(2), text(textStr).fit())));
+        onRenderThread(() -> state.addLine(new OutputLine.Text(textStr)));
     }
 
     @Override
     public void printPermissionDenied(String toolName) {
-        onRenderThread(() -> outputLog.add(row(
-            spacer(2),
-            text("⚠ Permission denied: ").yellow().fit(),
-            text(toolName).bold().fit()
-        )));
+        onRenderThread(() -> state.addLine(new OutputLine.PermissionDenied(toolName)));
     }
+
+    // ========================= Rich rendering =========================
 
     @Override
     public void renderDiff(String diff) {
         onRenderThread(() -> {
             for (String line : diff.split("\n")) {
-                if (line.startsWith("+")) outputLog.add(text(line).green());
-                else if (line.startsWith("-")) outputLog.add(text(line).red());
-                else if (line.startsWith("@@")) outputLog.add(text(line).cyan());
-                else outputLog.add(text(line).dim());
+                state.addLine(new OutputLine.DiffLine(line));
             }
         });
     }
 
     @Override
     public void renderToolCall(String name, Map<String, Object> args, ToolCallStatus status) {
-        if (state.activeAgentName() != null) return; // agent activity only in info panel
-        String icon = switch (status) {
-            case PENDING -> "○"; case RUNNING -> "●"; case COMPLETED -> "✓"; case FAILED -> "✗";
-        };
+        if (state.activeAgentName() != null) return;
+        String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
-            var iconEl = switch (status) {
-                case PENDING -> text(icon + " ").dim().fit();
-                case RUNNING -> text(icon + " ").cyan().fit();
-                case COMPLETED -> text(icon + " ").green().fit();
-                case FAILED -> text(icon + " ").red().fit();
-            };
-            outputLog.add(row(spacer(2), iconEl, text(name).bold().fit(), text("(" + formatArgs(args) + ")").dim().fit()));
+            // Try to update existing tool call line, otherwise add new
+            boolean updated = state.updateLast(OutputLine.ToolCall.class,
+                tc -> tc.name().equals(name) ? tc.withStatus(status) : tc);
+            if (!updated) {
+                state.addLine(new OutputLine.ToolCall(name, inlineArgs, status));
+            }
         });
     }
 
     @Override
     public void renderAgentStatus(String agentName, AgentStatus status, String detail) {
         onRenderThread(() -> {
-            // Track active agent for info panel (live updates there, not in log)
             if (status == AgentStatus.RUNNING || status == AgentStatus.STARTING) {
                 state.setActiveAgent(agentName);
-                // Update info panel detail
                 if (detail != null) state.setAgentDetail(detail);
-                return; // don't add to output log during run
+                // Add or update agent line in output log
+                boolean updated = state.updateLast(OutputLine.Agent.class,
+                    a -> a.name().equals(agentName) ? a.withStatus(status, detail) : a);
+                if (!updated) {
+                    state.addLine(new OutputLine.Agent(agentName, status, detail));
+                }
+                return;
             }
-
-            // Final status — one line in output log
+            // Final status
             state.clearActiveAgent();
-            String icon = switch (status) {
-                case COMPLETED -> "✓";
-                case FAILED -> "✗";
-                case KILLED -> "⊘";
-                default -> "●";
-            };
-            var iconEl = switch (status) {
-                case COMPLETED -> text(icon + " ").green().fit();
-                case FAILED -> text(icon + " ").red().fit();
-                default -> text(icon + " ").dim().fit();
-            };
-            outputLog.add(row(
-                spacer(2),
-                iconEl,
-                text(agentName).bold().fit(),
-                detail != null ? text(" " + detail).dim().fit() : text("").fit()
-            ));
+            state.updateLast(OutputLine.Agent.class,
+                a -> a.name().equals(agentName) ? a.withStatus(status, detail) : a);
         });
     }
 
     @Override
     public void renderProgress(String label, int current, int total) {
-        double ratio = total > 0 ? (double) current / total : 0;
-        int pct = (int) (ratio * 100);
-        onRenderThread(() -> outputLog.add(row(
-            text(label + " ").bold().fit(),
-            gauge(ratio).green().fill(),
-            text(" " + pct + "%").dim().fit()
-        )));
+        int pct = total > 0 ? (int) ((double) current / total * 100) : 0;
+        onRenderThread(() -> state.addLine(new OutputLine.Dim(label + " " + pct + "%")));
     }
 
     @Override
@@ -237,7 +196,7 @@ public final class TuiRenderer implements Renderer {
     public void stopSpinner(String finalMessage) {
         onRenderThread(() -> {
             state.setSpinner(false, null);
-            outputLog.add(text("✓ " + finalMessage).green());
+            state.addLine(new OutputLine.Text("✓ " + finalMessage));
         });
     }
 
@@ -249,8 +208,8 @@ public final class TuiRenderer implements Renderer {
     @Override
     public void renderBox(String title, List<String> content, BoxStyle style) {
         onRenderThread(() -> {
-            if (title != null) outputLog.add(text("── " + title + " ──").bold());
-            for (String line : content) outputLog.add(text("  " + line));
+            if (title != null) state.addLine(new OutputLine.Text("── " + title + " ──"));
+            for (String line : content) state.addLine(new OutputLine.Text("  " + line));
         });
     }
 
@@ -262,14 +221,14 @@ public final class TuiRenderer implements Renderer {
                 if (i > 0) sb.append(" │ ");
                 sb.append(headers.get(i));
             }
-            outputLog.add(text(sb.toString()).bold().cyan());
+            state.addLine(new OutputLine.Text(sb.toString()));
             for (var row : rows) {
                 var rsb = new StringBuilder();
                 for (int i = 0; i < row.size(); i++) {
                     if (i > 0) rsb.append(" │ ");
                     rsb.append(row.get(i));
                 }
-                outputLog.add(rsb.toString());
+                state.addLine(new OutputLine.Text(rsb.toString()));
             }
         });
     }
@@ -278,51 +237,35 @@ public final class TuiRenderer implements Renderer {
     public void renderMarkdown(String markdown) {
         onRenderThread(() -> {
             for (String line : markdown.split("\n")) {
-                if (line.startsWith("# ")) outputLog.add(text(line.substring(2)).bold().cyan());
-                else if (line.startsWith("## ")) outputLog.add(text(line.substring(3)).bold());
-                else if (line.startsWith("- ") || line.startsWith("* "))
-                    outputLog.add(text("  • " + line.substring(2)));
-                else outputLog.add(line);
+                state.addLine(new OutputLine.Text(line));
             }
         });
     }
 
-    // ---- Expand/collapse ----
+    // ========================= Expand/collapse =========================
 
     public void toggleExpandCollapse() {
         onRenderThread(() -> {
             if (!state.hasCollapsed()) return;
             CliState.CollapsedResult cr = state.popCollapsed();
             if (cr == null) return;
-            // Show full output, skipping the preview lines already shown
             String[] lines = cr.output().split("\n", -1);
             for (int i = CliState.COLLAPSED_PREVIEW_LINES; i < lines.length; i++) {
-                outputLog.add(row(spacer(2), text("⎿  " + lines[i]).dim().fit()));
+                state.addLine(new OutputLine.Result(lines[i]));
             }
-            outputLog.add(row(spacer(2), text("⎿  (expanded " + lines.length + " lines)").dim().fit()));
         });
     }
 
-    // ---- Permission prompt ----
+    // ========================= Permission prompt =========================
 
-    private final java.util.concurrent.BlockingQueue<Integer> permissionResult = new java.util.concurrent.LinkedBlockingQueue<>();
+    private final BlockingQueue<Integer> permissionResult = new LinkedBlockingQueue<>();
 
-    /**
-     * Show permission prompt in the UI and block until user responds.
-     * Called from REPL thread. CliApp swaps the input area for a selection list.
-     * Returns selected option index.
-     */
     public int promptPermission(String header, String[] options) {
         onRenderThread(() -> state.setPermissionPrompt(header, options));
-
-        try {
-            return permissionResult.take();
-        } catch (InterruptedException e) {
-            return options.length - 1; // deny
-        }
+        try { return permissionResult.take(); }
+        catch (InterruptedException e) { return options.length - 1; }
     }
 
-    /** Called by CliApp when user responds to permission prompt. */
     public void resolvePermission(int selectedIndex) {
         onRenderThread(() -> state.clearPermissionPrompt());
         permissionResult.offer(selectedIndex);
@@ -332,7 +275,7 @@ public final class TuiRenderer implements Renderer {
         return state.hasPermissionPrompt();
     }
 
-    // ---- Helpers ----
+    // ========================= Helpers =========================
 
     private String formatArgs(Map<String, Object> args) {
         if (args == null || args.isEmpty()) return "";

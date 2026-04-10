@@ -1,11 +1,11 @@
 package cz.krokviak.agents.cli.render.tui;
 
-import dev.tamboui.toolkit.element.StyledElement;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Centralized mutable state for the TUI. Mutated only on the render thread.
@@ -16,8 +16,8 @@ public final class CliState {
     private static final int MAX_OUTPUT_LINES = 5000;
     static final int COLLAPSED_PREVIEW_LINES = 2;
 
-    // --- Output log ---
-    private final List<StyledElement<?>> outputLines = new ArrayList<>();
+    // --- Output log (reactive — list rebuilds from this each render) ---
+    private final List<OutputLine> outputLines = new ArrayList<>();
 
     // --- Spinner ---
     private boolean spinnerActive;
@@ -40,15 +40,26 @@ public final class CliState {
 
     // ---- Output ----
 
-    public void addOutput(StyledElement<?> element) {
-        outputLines.add(element);
+    public void addLine(OutputLine line) {
+        outputLines.add(line);
         if (outputLines.size() > MAX_OUTPUT_LINES) {
             outputLines.subList(0, outputLines.size() - MAX_OUTPUT_LINES).clear();
         }
-        lastResultExpanded = false;
     }
 
-    public List<StyledElement<?>> outputLines() { return outputLines; }
+    /** Find last line matching predicate and replace it in-place. */
+    @SuppressWarnings("unchecked")
+    public <T extends OutputLine> boolean updateLast(Class<T> type, Function<T, T> updater) {
+        for (int i = outputLines.size() - 1; i >= 0; i--) {
+            if (type.isInstance(outputLines.get(i))) {
+                outputLines.set(i, updater.apply((T) outputLines.get(i)));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<OutputLine> outputLines() { return outputLines; }
 
     // ---- Streaming ----
 
