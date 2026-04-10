@@ -179,9 +179,31 @@ public final class CliController {
     }
 
     public boolean hasActiveAgents() { return !agents.isEmpty(); }
-    /** Returns first active agent name or null. */
     public String firstActiveAgent() { return agents.isEmpty() ? null : agents.keySet().iterator().next(); }
     public Collection<AgentInfo> activeAgents() { return agents.values(); }
+
+    /** Insert a line right after the last line belonging to the given agent. */
+    public void addLineAfterAgent(String agentName, OutputLine line) {
+        // Find last line for this agent (Agent line or indented ToolCall/CollapseHint after it)
+        int insertPos = lines.size(); // default: end
+        for (int i = lines.size() - 1; i >= 0; i--) {
+            var l = lines.get(i);
+            if (l instanceof OutputLine.Agent a && a.name().equals(agentName)) {
+                // Insert after this agent's block (skip past following tool calls)
+                insertPos = i + 1;
+                while (insertPos < lines.size()) {
+                    var next = lines.get(insertPos);
+                    if (next instanceof OutputLine.ToolCall tc && tc.indented()) insertPos++;
+                    else if (next instanceof OutputLine.CollapseHint) insertPos++;
+                    else if (next instanceof OutputLine.Timing) insertPos++;
+                    else break;
+                }
+                break;
+            }
+        }
+        lines.add(insertPos, line);
+        if (lines.size() > MAX_LINES) lines.subList(0, lines.size() - MAX_LINES).clear();
+    }
 
     // ========================= Command trie =========================
 

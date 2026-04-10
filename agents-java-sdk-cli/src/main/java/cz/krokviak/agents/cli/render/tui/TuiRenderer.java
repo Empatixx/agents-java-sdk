@@ -21,6 +21,9 @@ public final class TuiRenderer implements Renderer {
     private volatile ToolkitRunner runner;
     private final ConcurrentLinkedQueue<Runnable> pending = new ConcurrentLinkedQueue<>();
 
+    /** Set by AgentSpawner on the agent's thread so printToolCall knows which agent. */
+    public static final ThreadLocal<String> CURRENT_AGENT = new ThreadLocal<>();
+
     public TuiRenderer(CliController ctrl) {
         this.ctrl = ctrl;
     }
@@ -46,11 +49,17 @@ public final class TuiRenderer implements Renderer {
     public void printToolCall(String name, Map<String, Object> args) {
         if ("agent".equals(name)) return;
         String a = fmtArgs(args);
+        String agentName = CURRENT_AGENT.get(); // which agent thread is this?
         ui(() -> {
-            boolean inAgent = ctrl.hasActiveAgents();
-            if (inAgent) ctrl.pushAgentToolCall(ctrl.firstActiveAgent(), "● " + name + "(" + a + ")");
-            ctrl.collapseOldTools();
-            ctrl.addLine(new OutputLine.ToolCall(name, a, ToolCallStatus.RUNNING, inAgent));
+            boolean inAgent = agentName != null && ctrl.hasActiveAgents();
+            var toolLine = new OutputLine.ToolCall(name, a, ToolCallStatus.RUNNING, inAgent);
+            if (inAgent) {
+                ctrl.pushAgentToolCall(agentName, "● " + name + "(" + a + ")");
+                ctrl.addLineAfterAgent(agentName, toolLine);
+            } else {
+                ctrl.collapseOldTools();
+                ctrl.addLine(toolLine);
+            }
         });
     }
 
@@ -58,9 +67,15 @@ public final class TuiRenderer implements Renderer {
     public void printToolResult(String name, String output) {
         if (output == null || output.isEmpty() || "agent".equals(name)) return;
         String[] lines = output.split("\n", -1);
+        String agentName = CURRENT_AGENT.get();
         ui(() -> {
             ctrl.updateLast(OutputLine.ToolCall.class, tc -> tc.withStatus(ToolCallStatus.COMPLETED));
-            ctrl.addLine(new OutputLine.CollapseHint(lines.length, 0));
+            var hint = new OutputLine.CollapseHint(lines.length, 0);
+            if (agentName != null && ctrl.hasActiveAgents()) {
+                ctrl.addLineAfterAgent(agentName, hint);
+            } else {
+                ctrl.addLine(hint);
+            }
             ctrl.pushCollapsed(new CliController.CollapsedResult(output, lines.length));
         });
     }
