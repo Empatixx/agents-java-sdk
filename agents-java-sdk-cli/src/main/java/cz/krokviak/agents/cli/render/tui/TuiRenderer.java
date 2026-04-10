@@ -57,7 +57,6 @@ public final class TuiRenderer implements Renderer {
                 ctrl.pushAgentToolCall(agentName, "● " + name + "(" + a + ")");
                 ctrl.addLineAfterAgent(agentName, toolLine);
             } else {
-                ctrl.collapseOldTools();
                 ctrl.addLine(toolLine);
             }
         });

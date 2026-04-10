@@ -29,7 +29,6 @@ public class ExitPlanModeTool implements ExecutableTool {
     public ToolOutput execute(ToolArgs args, ToolContext<?> toolCtx) {
         ctx.setPlanMode(false);
 
-        // Load and display plan
         String slug = planStore.currentSlug();
         String planContent = null;
         if (slug != null) {
@@ -37,18 +36,23 @@ public class ExitPlanModeTool implements ExecutableTool {
         }
 
         if (planContent != null && !planContent.isBlank()) {
-            ctx.output().println("📋 Plan ready for review:");
-            ctx.output().println("─".repeat(60));
+            ctx.output().println("");
+            ctx.output().println("╭──── 📋 Plan: " + slug + " ────");
             for (String line : planContent.split("\n")) {
-                ctx.output().println("  " + line);
+                ctx.output().println("│ " + line);
             }
-            ctx.output().println("─".repeat(60));
-            ctx.output().println("Type 'ok' to approve, or provide feedback to refine the plan.");
+            ctx.output().println("╰" + "─".repeat(50));
+            ctx.output().println("");
+            ctx.output().println("Type 'ok' to approve and implement, or provide feedback to refine.");
+
+            return ToolOutput.text(
+                "Plan shown to user. STOP and wait for user response.\n" +
+                "- If user says 'ok' or 'approve': implement the plan.\n" +
+                "- If user provides feedback: re-enter plan mode and update the plan.\n" +
+                "DO NOT proceed with implementation until user approves.");
         } else {
             ctx.output().println("✓ Plan mode off — all tools available");
+            return ToolOutput.text("Plan mode deactivated. No plan file found.");
         }
-
-        return ToolOutput.text("Plan mode deactivated. Plan shown to user for approval. " +
-            "Wait for user response — they will approve or provide feedback.");
     }
 }
