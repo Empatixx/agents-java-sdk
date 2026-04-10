@@ -14,16 +14,24 @@ public sealed interface OutputLine {
 
     StyledElement<?> render();
 
-    record Text(String content) implements OutputLine {
+    /** First line of AI response — with ● bullet. */
+    record TextStart(String content) implements OutputLine {
         public StyledElement<?> render() {
             return row(text("  ● ").dim().fit(), text(content).fit());
+        }
+    }
+
+    /** Continuation lines of AI response — no bullet. */
+    record Text(String content) implements OutputLine {
+        public StyledElement<?> render() {
+            return text("    " + content);
         }
     }
 
     record UserMessage(String content) implements OutputLine {
         public StyledElement<?> render() {
             return row(text(" ❯ ").bold().cyan().fit(), text(content).bold().fit())
-                .bg(Color.indexed(236));  // dark gray background
+                .bg(Color.indexed(238));
         }
     }
 

@@ -22,6 +22,7 @@ public final class TuiRenderer implements Renderer {
     private final CliState state;
     private volatile ToolkitRunner runner;
     private final ConcurrentLinkedQueue<Runnable> pendingBeforeReady = new ConcurrentLinkedQueue<>();
+    private boolean firstResponseLine = true; // reset on each new user message
 
     public TuiRenderer(CliState state) {
         this.state = state;
@@ -95,7 +96,14 @@ public final class TuiRenderer implements Renderer {
     public void printTextDelta(String delta) {
         onRenderThread(() -> {
             state.appendStreaming(delta);
-            state.flushStreamingBuffer(line -> state.addLine(new OutputLine.Text(line)));
+            state.flushStreamingBuffer(line -> {
+                if (firstResponseLine) {
+                    state.addLine(new OutputLine.TextStart(line));
+                    firstResponseLine = false;
+                } else {
+                    state.addLine(new OutputLine.Text(line));
+                }
+            });
         });
     }
 
@@ -106,12 +114,18 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void printPrompt() {
-        onRenderThread(() -> state.flushAll(line -> state.addLine(new OutputLine.Text(line))));
+        onRenderThread(() -> {
+            state.flushAll(line -> state.addLine(new OutputLine.Text(line)));
+            firstResponseLine = true;
+        });
     }
 
     @Override
     public void printPromptWithCost(String costInfo) {
-        onRenderThread(() -> state.flushAll(line -> state.addLine(new OutputLine.Text(line))));
+        onRenderThread(() -> {
+            state.flushAll(line -> state.addLine(new OutputLine.Text(line)));
+            firstResponseLine = true;
+        });
     }
 
     @Override
