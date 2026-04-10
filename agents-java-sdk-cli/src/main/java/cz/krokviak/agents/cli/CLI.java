@@ -45,7 +45,7 @@ public class CLI {
         CliConfig config = CliConfig.parse(args);
         Model model = switch (config.provider()) {
             case ANTHROPIC -> new AnthropicModel(config.apiKey(), config.baseUrl(), config.model());
-            case OPENAI -> new OpenAIChatCompletionsModel(config.apiKey(), config.baseUrl(), config.model());
+            case OPENAI -> new cz.krokviak.agents.model.OpenAIResponsesModel(config.apiKey(), config.baseUrl(), config.model());
         };
         Path cwd = config.workingDirectory();
 

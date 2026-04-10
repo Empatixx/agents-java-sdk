@@ -74,7 +74,7 @@ public record CliConfig(
         if (model == null) {
             model = switch (provider) {
                 case ANTHROPIC -> "claude-sonnet-4-20250514";
-                case OPENAI -> "gpt-4.1";
+                case OPENAI -> "gpt-5.4-2026-03-05";
             };
         }
 
