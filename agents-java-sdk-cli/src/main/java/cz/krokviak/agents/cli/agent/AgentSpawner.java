@@ -36,7 +36,7 @@ public class AgentSpawner {
      * Run agent synchronously, return output string.
      */
     public String spawnForeground(String name, String prompt, List<ExecutableTool> tools,
-                                  Model model, ProgressTracker progress) {
+                                  Model model, ProgressTracker progress, int maxTurns) {
         RunningAgent agent = new RunningAgent(name, name, false);
         agent.setStatus(AgentStatus.RUNNING);
         registry.register(name, agent);
@@ -44,7 +44,7 @@ public class AgentSpawner {
         ctx.output().renderAgentStatus(name, AgentStatus.RUNNING, "starting");
 
         try {
-            String result = runLoop(name, prompt, tools, model, progress, agent);
+            String result = runLoop(name, prompt, tools, model, progress, agent, maxTurns);
             agent.setStatus(AgentStatus.COMPLETED);
             ctx.output().renderAgentStatus(name, AgentStatus.COMPLETED, progress != null ? progress.getProgressLine() : "done");
             registry.remove(name);
@@ -61,7 +61,7 @@ public class AgentSpawner {
      * Spawn agent on a virtual thread, returns RunningAgent immediately.
      */
     public RunningAgent spawnBackground(String name, String prompt, List<ExecutableTool> tools,
-                                        Model model, ProgressTracker progress) {
+                                        Model model, ProgressTracker progress, int maxTurns) {
         RunningAgent agent = new RunningAgent(name, name, true);
         registry.register(name, agent);
 
@@ -75,7 +75,7 @@ public class AgentSpawner {
             agent.setStatus(AgentStatus.RUNNING);
             task.start();
             try {
-                String result = runLoop(name, prompt, tools, model, progress, agent);
+                String result = runLoop(name, prompt, tools, model, progress, agent, maxTurns);
                 agent.appendOutput(result);
                 agent.setStatus(AgentStatus.COMPLETED);
                 task.complete(result);
@@ -101,11 +101,11 @@ public class AgentSpawner {
     public RunningAgent spawnIsolated(String name, String prompt, List<ExecutableTool> tools,
                                       Model model, ProgressTracker progress, String worktreePath) {
         ctx.output().renderAgentStatus(name, AgentStatus.STARTING, "isolated:" + worktreePath);
-        return spawnBackground(name, prompt, tools, model, progress);
+        return spawnBackground(name, prompt, tools, model, progress, 15);
     }
 
     private String runLoop(String agentId, String prompt, List<ExecutableTool> tools,
-                           Model model, ProgressTracker progress, RunningAgent agent) {
+                           Model model, ProgressTracker progress, RunningAgent agent, int maxTurns) {
         List<ToolDefinition> defs = tools.stream()
             .filter(t -> !t.name().equals("agent"))
             .map(ExecutableTool::definition)
@@ -113,7 +113,7 @@ public class AgentSpawner {
         List<InputItem> history = new ArrayList<>(List.of(new InputItem.UserMessage(prompt)));
         StringBuilder response = new StringBuilder();
 
-        for (int turn = 0; turn < 15; turn++) {
+        for (int turn = 0; turn < maxTurns; turn++) {
             injectMailbox(history, agentId);
             if (progress != null) progress.updateActivity("turn " + (turn + 1));
 
@@ -147,6 +147,9 @@ public class AgentSpawner {
             response.setLength(0);
 
             for (var tc : tcs) {
+                // Notify renderer so info panel shows agent tool calls
+                ctx.output().printToolCall(tc.name(), tc.arguments());
+
                 ExecutableTool tool = tools.stream()
                     .filter(t -> t.name().equals(tc.name()) && !t.name().equals("agent"))
                     .findFirst().orElse(null);

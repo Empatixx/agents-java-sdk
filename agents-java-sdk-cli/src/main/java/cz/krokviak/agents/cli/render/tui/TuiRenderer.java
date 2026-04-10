@@ -66,11 +66,17 @@ public final class TuiRenderer implements Renderer {
     @Override
     public void printToolCall(String name, Map<String, Object> args) {
         String inlineArgs = formatArgs(args);
-        onRenderThread(() -> outputLog.add(row(
-            text("● ").green().fit(),
-            text(name).bold().fit(),
-            text("(" + inlineArgs + ")").dim().fit()
-        )));
+        onRenderThread(() -> {
+            outputLog.add(row(
+                text("● ").green().fit(),
+                text(name).bold().fit(),
+                text("(" + inlineArgs + ")").dim().fit()
+            ));
+            // Feed to agent activity tracker if agent is running
+            if (state.activeAgentName() != null) {
+                state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
+            }
+        });
     }
 
     @Override
@@ -178,12 +184,20 @@ public final class TuiRenderer implements Renderer {
             case STARTING -> "◌"; case RUNNING -> "●"; case WAITING -> "◎";
             case COMPLETED -> "✓"; case FAILED -> "✗"; case KILLED -> "⊘";
         };
-        onRenderThread(() -> outputLog.add(row(
-            text(icon + " ").cyan().fit(),
-            text(agentName).bold().fit(),
-            text(" — " + status.name().toLowerCase()).dim().fit(),
-            detail != null ? text(" " + detail).dim().fit() : text("").fit()
-        )));
+        onRenderThread(() -> {
+            // Track active agent for info panel
+            if (status == AgentStatus.RUNNING || status == AgentStatus.STARTING) {
+                state.setActiveAgent(agentName);
+            } else if (status == AgentStatus.COMPLETED || status == AgentStatus.FAILED || status == AgentStatus.KILLED) {
+                state.clearActiveAgent();
+            }
+            outputLog.add(row(
+                text(icon + " ").cyan().fit(),
+                text(agentName).bold().fit(),
+                text(" — " + status.name().toLowerCase()).dim().fit(),
+                detail != null ? text(" " + detail).dim().fit() : text("").fit()
+            ));
+        });
     }
 
     @Override
@@ -261,9 +275,12 @@ public final class TuiRenderer implements Renderer {
             if (!state.hasCollapsed()) return;
             CliState.CollapsedResult cr = state.popCollapsed();
             if (cr == null) return;
-            for (String line : cr.output().split("\n")) {
-                outputLog.add(text("  ⎿  " + line).dim());
+            // Show full output, skipping the preview lines already shown
+            String[] lines = cr.output().split("\n", -1);
+            for (int i = CliState.COLLAPSED_PREVIEW_LINES; i < lines.length; i++) {
+                outputLog.add(text("  ⎿  " + lines[i]).dim());
             }
+            outputLog.add(text("  ⎿  (expanded " + lines.length + " lines)").dim());
         });
     }
 

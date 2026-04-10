@@ -132,6 +132,31 @@ public final class CliState {
     public String permissionHeader() { return permissionHeader; }
     public String[] permissionOptions() { return permissionOptions; }
 
+    // ---- Active agent tool call tracking ----
+
+    private String activeAgentName;
+    private final List<String> agentToolCalls = new ArrayList<>();
+
+    public void setActiveAgent(String name) {
+        this.activeAgentName = name;
+        agentToolCalls.clear();
+    }
+
+    public void clearActiveAgent() {
+        this.activeAgentName = null;
+        agentToolCalls.clear();
+    }
+
+    public void pushAgentToolCall(String line) {
+        agentToolCalls.add(line);
+        if (agentToolCalls.size() > 5) {
+            agentToolCalls.removeFirst();
+        }
+    }
+
+    public String activeAgentName() { return activeAgentName; }
+    public List<String> agentToolCalls() { return agentToolCalls; }
+
     // ---- Command trie ----
 
     private final CommandTrie commandTrie = new CommandTrie();

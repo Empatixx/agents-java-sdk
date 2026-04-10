@@ -69,21 +69,13 @@ public final class CliApp extends ToolkitApp {
         String input = inputState.text();
         List<CommandTrie.Match> suggestions = state.suggestCommands(input);
 
-        String ghostSuffix = null;
-        if (!suggestions.isEmpty() && input.startsWith("/") && input.length() > 1) {
-            String firstCmd = suggestions.getFirst().command();
-            String typed = input.substring(1);
-            if (firstCmd.startsWith(typed) && firstCmd.length() > typed.length()) {
-                ghostSuffix = firstCmd.substring(typed.length());
-            }
-        }
-
         return column(
             OutputLogComponent.render(state),
             SpinnerBarComponent.render(state),
-            InputAreaComponent.render(inputState, ghostSuffix, this::handleSubmit, event -> {
+            InputAreaComponent.render(inputState, this::handleSubmit, event -> {
                 if (event.isCtrlC()) { quit(); return EventResult.HANDLED; }
-                if (event.character() == 15) {
+                // Ctrl+O: toggle expand/collapse
+                if (event.character() == 15 || (event.hasCtrl() && event.isChar('o'))) {
                     tuiRenderer.toggleExpandCollapse();
                     return EventResult.HANDLED;
                 }

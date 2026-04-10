@@ -7,9 +7,10 @@ import java.util.List;
 import static dev.tamboui.toolkit.Toolkit.*;
 
 /**
- * Fixed-height panel below input. Shows either:
- * - Command suggestions when typing "/"
- * - Status info (model, cost, context) otherwise
+ * Fixed-height panel below input. Priority:
+ * 1. Command suggestions (when typing "/")
+ * 2. Agent activity (when agent is running — last 5 tool calls)
+ * 3. Status info (model, cost, context)
  *
  * Always exactly PANEL_HEIGHT lines — no layout jumping.
  */
@@ -21,6 +22,9 @@ public final class InfoPanelComponent {
     public static Element render(CliState state, List<CommandTrie.Match> suggestions) {
         if (!suggestions.isEmpty()) {
             return renderSuggestions(suggestions);
+        }
+        if (state.activeAgentName() != null) {
+            return renderAgentActivity(state);
         }
         return renderStatus(state);
     }
@@ -37,6 +41,28 @@ public final class InfoPanelComponent {
                     text(match.description()).dim().fit(),
                     spacer()
                 );
+            } else {
+                rows[i] = text("");
+            }
+        }
+        return column(rows).length(PANEL_HEIGHT);
+    }
+
+    private static Element renderAgentActivity(CliState state) {
+        var rows = new Element[PANEL_HEIGHT];
+        // Line 0: agent header
+        rows[0] = row(
+            spacer(2),
+            spinner().cyan().fit(),
+            text(" " + state.activeAgentName() + " running...").bold().cyan().fit(),
+            spacer()
+        );
+        // Lines 1-4: last tool calls
+        List<String> calls = state.agentToolCalls();
+        for (int i = 1; i < PANEL_HEIGHT; i++) {
+            int callIdx = i - 1;
+            if (callIdx < calls.size()) {
+                rows[i] = row(spacer(4), text(calls.get(callIdx)).dim().fit(), spacer());
             } else {
                 rows[i] = text("");
             }

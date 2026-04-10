@@ -11,6 +11,7 @@ public final class OutputLogComponent {
 
     private static final ListElement<?> LOG = list()
         .stickyScroll()
+        .scrollbar(dev.tamboui.widgets.common.ScrollBarPolicy.AS_NEEDED)
         .displayOnly();
 
     public static ListElement<?> instance() { return LOG; }

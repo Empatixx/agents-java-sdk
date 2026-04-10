@@ -37,7 +37,8 @@ public class AgentTool implements ExecutableTool {
                 "description", Map.of("type", "string", "description", "Short 3-5 word description"),
                 "run_in_background", Map.of("type", "boolean", "description", "Run asynchronously (default false)"),
                 "name", Map.of("type", "string", "description", "Optional agent name for addressing later"),
-                "model", Map.of("type", "string", "description", "Model override")
+                "model", Map.of("type", "string", "description", "Model override"),
+                "max_turns", Map.of("type", "integer", "description", "Max conversation turns (default 15, max 100)")
             ), "required", List.of("prompt", "description")));
     }
 
@@ -52,6 +53,8 @@ public class AgentTool implements ExecutableTool {
         Boolean bg = args.getOrDefault("run_in_background", Boolean.class, false);
         String nameParam = args.getOrDefault("name", String.class, null);
         String modelOverride = args.get("model", String.class);
+        Integer maxTurnsParam = args.getOrDefault("max_turns", Integer.class, null);
+        int maxTurns = Math.min(maxTurnsParam != null ? maxTurnsParam : 15, 100);
         if (prompt == null || prompt.isBlank()) return ToolOutput.text("Error: prompt required");
 
         // Resolve agent name
@@ -67,10 +70,10 @@ public class AgentTool implements ExecutableTool {
         ProgressTracker progress = new ProgressTracker();
 
         if (Boolean.TRUE.equals(bg)) {
-            RunningAgent agent = spawner.spawnBackground(agentName, prompt, tools, model, progress);
+            RunningAgent agent = spawner.spawnBackground(agentName, prompt, tools, model, progress, maxTurns);
             return ToolOutput.text("Background agent started: " + agentName + " (" + desc + ")\nUse /tasks to check status.");
         } else {
-            String output = spawner.spawnForeground(agentName, prompt, tools, model, progress);
+            String output = spawner.spawnForeground(agentName, prompt, tools, model, progress, maxTurns);
             return ToolOutput.text(output);
         }
     }

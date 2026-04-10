@@ -25,7 +25,6 @@ public final class PermissionSelectComponent {
                     .items(options)
                     .highlightColor(Color.YELLOW)
                     .highlightSymbol("❯ ")
-                    .id("permission")
                     .focusable()
                     .onKeyEvent(event -> {
                         if (event.isConfirm()) {
