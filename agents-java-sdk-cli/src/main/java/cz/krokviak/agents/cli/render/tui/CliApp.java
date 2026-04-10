@@ -56,10 +56,26 @@ public final class CliApp extends ToolkitApp {
     protected void onStart() {
         renderer.activate(runner());
 
-        var actions = new dev.tamboui.tui.bindings.ActionHandler(appBindings);
-        actions.on("planMode", _ -> togglePlanMode());
-        actions.on("expandCollapse", _ -> renderer.toggleExpand());
-        runner().eventRouter().addGlobalHandler(actions);
+        runner().eventRouter().addGlobalHandler(event -> {
+            if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
+
+            // Shift+Tab (backtab) = KeyCode.TAB + shift, or KeyCode.BACKSPACE with shift on some terminals
+            if (key.isKey(dev.tamboui.tui.event.KeyCode.TAB) && key.hasShift()) {
+                togglePlanMode();
+                return EventResult.HANDLED;
+            }
+            // Ctrl+O = char 15
+            if (key.character() == 15) {
+                renderer.toggleExpand();
+                return EventResult.HANDLED;
+            }
+            // Fallback: Escape toggles plan mode when not typing
+            if (key.isKey(dev.tamboui.tui.event.KeyCode.ESCAPE) && inputState.text().isEmpty()) {
+                togglePlanMode();
+                return EventResult.HANDLED;
+            }
+            return EventResult.UNHANDLED;
+        });
 
         ready.countDown();
     }
