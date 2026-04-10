@@ -70,16 +70,16 @@ public final class TuiRenderer implements Renderer {
     public void printToolResult(String name, String output) {
         if (output == null || output.isEmpty()) return;
         if ("agent".equals(name)) return;
-        String[] allLines = output.split("\n", -1);
-        // Store timing start — will be merged when printToolTiming is called
+        String[] lines = output.split("\n", -1);
         onRenderThread(() -> {
             state.updateLast(OutputLine.ToolCall.class, tc -> tc.withStatus(ToolCallStatus.COMPLETED));
-            int previewCount = Math.min(allLines.length, CliState.COLLAPSED_PREVIEW_LINES);
-            String[] preview = new String[previewCount];
-            System.arraycopy(allLines, 0, preview, 0, previewCount);
-            state.addLine(new OutputLine.ToolOutput(preview, allLines.length, 0, allLines.length <= previewCount));
-            if (allLines.length > previewCount) {
-                state.pushCollapsed(new CliState.CollapsedResult(output, allLines.length));
+            int preview = Math.min(lines.length, CliState.COLLAPSED_PREVIEW_LINES);
+            for (int i = 0; i < preview; i++) {
+                state.addLine(new OutputLine.Result(lines[i]));
+            }
+            if (lines.length > preview) {
+                state.addLine(new OutputLine.CollapseHint(lines.length - preview, 0));
+                state.pushCollapsed(new CliState.CollapsedResult(output, lines.length));
             }
         });
     }
@@ -88,9 +88,11 @@ public final class TuiRenderer implements Renderer {
     public void printToolTiming(long startNanos) {
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
         onRenderThread(() -> {
-            // Merge timing into last ToolOutput
-            state.updateLast(OutputLine.ToolOutput.class,
-                to -> new OutputLine.ToolOutput(to.previewLines(), to.totalLines(), ms, to.expanded()));
+            // Try to merge into CollapseHint, otherwise add Timing
+            boolean merged = state.updateLast(OutputLine.CollapseHint.class, h -> h.withTiming(ms));
+            if (!merged) {
+                state.addLine(new OutputLine.Timing(ms));
+            }
         });
     }
 
@@ -248,9 +250,10 @@ public final class TuiRenderer implements Renderer {
             if (!state.hasCollapsed()) return;
             CliState.CollapsedResult cr = state.popCollapsed();
             if (cr == null) return;
-            String[] allLines = cr.output().split("\n", -1);
-            // Update last ToolOutput to show all lines
-            state.updateLast(OutputLine.ToolOutput.class, to -> to.withExpanded(allLines));
+            String[] lines = cr.output().split("\n", -1);
+            for (int i = CliState.COLLAPSED_PREVIEW_LINES; i < lines.length; i++) {
+                state.addLine(new OutputLine.Result(lines[i]));
+            }
         });
     }
 
