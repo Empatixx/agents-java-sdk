@@ -12,9 +12,16 @@ public class PermissionManager {
     public enum PermissionMode { DEFAULT, TRUST, DENY_ALL }
     public enum PermissionResult { ALLOW, DENY }
 
-    private static final Set<String> READ_ONLY_TOOLS = Set.of(
-        "read_file", "glob", "grep", "list_directory", "sub_agent"
+    // Tools that never need permission (read-only + safe operations)
+    private static final Set<String> AUTO_ALLOW_TOOLS = Set.of(
+        "read_file", "glob", "grep", "list_directory", "sub_agent",
+        "agent", "write_file", "edit_file", "web_fetch", "web_search",
+        "tool_search", "skill", "task_create", "task_update", "task_get", "task_list",
+        "memory_read", "memory_write", "send_message", "brief"
     );
+
+    // Only these tools require permission prompt
+    private static final Set<String> PERMISSION_REQUIRED = Set.of("bash");
 
     private final PermissionMode mode;
     private final List<PermissionRule> sessionRules = new ArrayList<>();
@@ -30,7 +37,7 @@ public class PermissionManager {
 
     public PermissionResult check(String toolName, Map<String, Object> args) {
         if (mode == PermissionMode.TRUST) return PermissionResult.ALLOW;
-        if (READ_ONLY_TOOLS.contains(toolName)) return PermissionResult.ALLOW;
+        if (!PERMISSION_REQUIRED.contains(toolName)) return PermissionResult.ALLOW;
         if (mode == PermissionMode.DENY_ALL) return PermissionResult.DENY;
 
         String target = extractTarget(toolName, args);
