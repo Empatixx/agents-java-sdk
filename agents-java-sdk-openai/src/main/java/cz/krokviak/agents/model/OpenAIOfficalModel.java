@@ -98,6 +98,7 @@ public class OpenAIOfficalModel implements Model {
                 .map(td -> Tool.ofFunction(FunctionTool.builder()
                     .name(td.name())
                     .description(td.description())
+                    .strict(false)
                     .parameters(FunctionTool.Parameters.builder()
                         .putAllAdditionalProperties(td.parametersSchema().entrySet().stream()
                             .collect(java.util.stream.Collectors.toMap(
