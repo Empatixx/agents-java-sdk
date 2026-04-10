@@ -119,12 +119,13 @@ public final class TuiRenderer implements Renderer {
             if (status == AgentStatus.RUNNING || status == AgentStatus.STARTING) {
                 ctrl.activateAgent(name);
                 if (detail != null) ctrl.updateAgentDetail(name, detail);
-                if (!ctrl.updateLast(OutputLine.Agent.class, a -> a.name().equals(name) ? a.withStatus(status, detail) : a))
+                // Update THIS agent's line by name, or add new
+                if (!ctrl.updateLast(OutputLine.Agent.class, a -> a.name().equals(name), a -> a.withStatus(status, detail)))
                     ctrl.addLine(new OutputLine.Agent(name, status, detail));
                 return;
             }
             ctrl.deactivateAgent(name);
-            ctrl.updateLast(OutputLine.Agent.class, a -> a.name().equals(name) ? a.withStatus(status, detail) : a);
+            ctrl.updateLast(OutputLine.Agent.class, a -> a.name().equals(name), a -> a.withStatus(status, detail));
         });
     }
 

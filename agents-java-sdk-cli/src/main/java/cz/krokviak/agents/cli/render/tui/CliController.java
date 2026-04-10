@@ -28,15 +28,22 @@ public final class CliController {
         if (lines.size() > MAX_LINES) lines.subList(0, lines.size() - MAX_LINES).clear();
     }
 
+    /** Update last line matching type AND predicate. */
     @SuppressWarnings("unchecked")
-    public <T extends OutputLine> boolean updateLast(Class<T> type, Function<T, T> updater) {
+    public <T extends OutputLine> boolean updateLast(Class<T> type, java.util.function.Predicate<T> predicate, Function<T, T> updater) {
         for (int i = lines.size() - 1; i >= 0; i--) {
-            if (type.isInstance(lines.get(i))) {
+            if (type.isInstance(lines.get(i)) && predicate.test((T) lines.get(i))) {
                 lines.set(i, updater.apply((T) lines.get(i)));
                 return true;
             }
         }
         return false;
+    }
+
+    /** Update last line matching type (any instance). */
+    @SuppressWarnings("unchecked")
+    public <T extends OutputLine> boolean updateLast(Class<T> type, Function<T, T> updater) {
+        return updateLast(type, _ -> true, updater);
     }
 
     /** Collapse old ToolCall groups to keep max N visible. */
