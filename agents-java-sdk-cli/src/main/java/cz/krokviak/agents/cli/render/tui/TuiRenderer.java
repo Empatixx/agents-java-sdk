@@ -61,9 +61,10 @@ public final class TuiRenderer implements Renderer {
         if ("agent".equals(name)) return;
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
-            boolean inAgent = state.activeAgentName() != null;
+            boolean inAgent = state.hasActiveAgents();
             if (inAgent) {
-                state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
+                String agentName = state.activeAgentName();
+                state.pushAgentToolCall(agentName, "● " + name + "(" + inlineArgs + ")");
             }
             // Collapse old tool calls beyond MAX_VISIBLE_TOOLS into a hint
             state.collapseOldToolLines(MAX_VISIBLE_TOOLS);
@@ -181,8 +182,7 @@ public final class TuiRenderer implements Renderer {
         onRenderThread(() -> {
             if (status == AgentStatus.RUNNING || status == AgentStatus.STARTING) {
                 state.setActiveAgent(agentName);
-                if (detail != null) state.setAgentDetail(detail);
-                // Add or update agent line in output log
+                if (detail != null) state.setAgentDetail(agentName, detail);
                 boolean updated = state.updateLast(OutputLine.Agent.class,
                     a -> a.name().equals(agentName) ? a.withStatus(status, detail) : a);
                 if (!updated) {
@@ -191,7 +191,7 @@ public final class TuiRenderer implements Renderer {
                 return;
             }
             // Final status
-            state.clearActiveAgent();
+            state.clearActiveAgent(agentName);
             state.updateLast(OutputLine.Agent.class,
                 a -> a.name().equals(agentName) ? a.withStatus(status, detail) : a);
         });

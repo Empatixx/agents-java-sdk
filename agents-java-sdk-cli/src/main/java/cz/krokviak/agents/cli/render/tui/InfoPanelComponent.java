@@ -23,7 +23,7 @@ public final class InfoPanelComponent {
         if (!suggestions.isEmpty()) {
             return renderSuggestions(suggestions);
         }
-        if (state.activeAgentName() != null) {
+        if (state.hasActiveAgents()) {
             return renderAgentActivity(state);
         }
         return renderStatus(state);
@@ -50,24 +50,29 @@ public final class InfoPanelComponent {
 
     private static Element renderAgentActivity(CliState state) {
         var rows = new Element[PANEL_HEIGHT];
-        // Line 0: agent header with progress detail
-        String detail = state.agentDetail().isEmpty() ? "running..." : state.agentDetail();
-        rows[0] = row(
-            spacer(2),
-            spinner().cyan().fit(),
-            text(" " + state.activeAgentName()).bold().cyan().fit(),
-            text("  " + detail).dim().fit(),
-            spacer()
-        );
-        // Lines 1-4: last tool calls
-        List<String> calls = state.agentToolCalls();
-        for (int i = 1; i < PANEL_HEIGHT; i++) {
-            int callIdx = i - 1;
-            if (callIdx < calls.size()) {
-                rows[i] = row(spacer(4), text(calls.get(callIdx)).dim().fit(), spacer());
-            } else {
-                rows[i] = text("");
+        int row = 0;
+
+        // Show each active agent: header + last tool call
+        for (var agent : state.activeAgents()) {
+            if (row >= PANEL_HEIGHT) break;
+            String detail = agent.detail().isEmpty() ? "running..." : agent.detail();
+            rows[row++] = row(
+                spacer(2),
+                spinner().cyan().fit(),
+                text(" " + agent.name()).bold().cyan().fit(),
+                text("  " + detail).dim().fit(),
+                spacer()
+            );
+            // Show last tool call for this agent
+            if (row < PANEL_HEIGHT && !agent.toolCalls().isEmpty()) {
+                String lastCall = agent.toolCalls().getLast();
+                rows[row++] = row(spacer(4), text(lastCall).dim().fit(), spacer());
             }
+        }
+
+        // Fill remaining with empty
+        for (int i = row; i < PANEL_HEIGHT; i++) {
+            rows[i] = text("");
         }
         return column(rows).length(PANEL_HEIGHT);
     }

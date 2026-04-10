@@ -143,36 +143,53 @@ public final class CliState {
     public String permissionHeader() { return permissionHeader; }
     public String[] permissionOptions() { return permissionOptions; }
 
-    // ---- Active agent tool call tracking ----
+    // ---- Active agents tracking (multiple) ----
 
-    private String activeAgentName;
-    private String agentDetail = "";
-    private final List<String> agentToolCalls = new ArrayList<>();
+    public record AgentInfo(String name, String detail, List<String> toolCalls) {
+        public AgentInfo(String name) { this(name, "", new ArrayList<>()); }
+    }
+
+    private final java.util.LinkedHashMap<String, AgentInfo> activeAgents = new java.util.LinkedHashMap<>();
 
     public void setActiveAgent(String name) {
-        this.activeAgentName = name;
-        this.agentDetail = "";
-        agentToolCalls.clear();
+        activeAgents.computeIfAbsent(name, AgentInfo::new);
     }
 
+    public void clearActiveAgent(String name) {
+        activeAgents.remove(name);
+    }
+
+    /** Legacy — clear the single-name agent (for backward compat). */
     public void clearActiveAgent() {
-        this.activeAgentName = null;
-        this.agentDetail = "";
-        agentToolCalls.clear();
-    }
-
-    public void setAgentDetail(String detail) { this.agentDetail = detail; }
-    public String agentDetail() { return agentDetail; }
-
-    public void pushAgentToolCall(String line) {
-        agentToolCalls.add(line);
-        if (agentToolCalls.size() > 5) {
-            agentToolCalls.removeFirst();
+        // Remove the most recently added
+        if (!activeAgents.isEmpty()) {
+            var last = activeAgents.keySet().stream().reduce((a, b) -> b).orElse(null);
+            if (last != null) activeAgents.remove(last);
         }
     }
 
-    public String activeAgentName() { return activeAgentName; }
-    public List<String> agentToolCalls() { return agentToolCalls; }
+    public void setAgentDetail(String name, String detail) {
+        var info = activeAgents.get(name);
+        if (info != null) {
+            activeAgents.put(name, new AgentInfo(name, detail, info.toolCalls()));
+        }
+    }
+
+    public void pushAgentToolCall(String agentName, String line) {
+        var info = activeAgents.get(agentName);
+        if (info != null) {
+            info.toolCalls().add(line);
+            if (info.toolCalls().size() > 3) info.toolCalls().removeFirst();
+        }
+    }
+
+    /** Any agent running? */
+    public String activeAgentName() {
+        return activeAgents.isEmpty() ? null : activeAgents.keySet().iterator().next();
+    }
+
+    public java.util.Collection<AgentInfo> activeAgents() { return activeAgents.values(); }
+    public boolean hasActiveAgents() { return !activeAgents.isEmpty(); }
 
     /**
      * When more than maxVisible ToolCall lines exist, remove the oldest ones
