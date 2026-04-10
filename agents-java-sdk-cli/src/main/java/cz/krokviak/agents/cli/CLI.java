@@ -241,15 +241,8 @@ public class CLI {
                     try {
                         String slug = fPlanStore.createPlan();
                         fCtrl.setPlanSlug(slug);
-                        fCtrl.addLine(new cz.krokviak.agents.cli.render.tui.OutputLine.Dim(
-                            "📋 Plan mode ON — plan: " + slug));
-                    } catch (Exception e) {
-                        fCtrl.addLine(new cz.krokviak.agents.cli.render.tui.OutputLine.Error(
-                            "Failed to create plan: " + e.getMessage()));
-                    }
+                    } catch (Exception ignored) {}
                 } else {
-                    fCtrl.addLine(new cz.krokviak.agents.cli.render.tui.OutputLine.Dim(
-                        "✓ Plan mode OFF — all tools available"));
                 }
             });
         }

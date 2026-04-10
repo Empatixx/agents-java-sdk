@@ -102,11 +102,12 @@ public sealed interface OutputLine {
         }
     }
 
-    /** Agent — updates in-place. */
+    /** Agent — updates in-place. Blinks ● when running. */
     record Agent(String name, AgentStatus status, String detail) implements OutputLine {
         public StyledElement<?> render() {
+            boolean blink = (TICK.get() % 2 == 0);
             String icon = switch (status) {
-                case STARTING, RUNNING, WAITING -> "●";
+                case STARTING, RUNNING, WAITING -> blink ? "●" : "○";
                 case COMPLETED -> "✓";
                 case FAILED, KILLED -> "✗";
             };
@@ -139,6 +140,9 @@ public sealed interface OutputLine {
             return row(text("  ⚠ Permission denied: ").yellow().fit(), text(toolName).bold().fit());
         }
     }
+
+    // Tick counter for blink animation — incremented by CliApp every 500ms
+    java.util.concurrent.atomic.AtomicInteger TICK = new java.util.concurrent.atomic.AtomicInteger(0);
 
     private static String trunc(String s, int max) {
         return s.length() <= max ? s : s.substring(0, max - 3) + "...";

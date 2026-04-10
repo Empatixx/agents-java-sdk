@@ -60,6 +60,11 @@ public final class CliApp extends ToolkitApp {
     protected void onStart() {
         renderer.activate(runner());
 
+        // Blink tick for agent ● animation
+        runner().scheduleRepeating(() ->
+            runner().runOnRenderThread(() -> OutputLine.TICK.incrementAndGet()),
+            Duration.ofMillis(500));
+
         runner().eventRouter().addGlobalHandler(event -> {
             if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
             if (!key.hasCtrl()) return EventResult.UNHANDLED;

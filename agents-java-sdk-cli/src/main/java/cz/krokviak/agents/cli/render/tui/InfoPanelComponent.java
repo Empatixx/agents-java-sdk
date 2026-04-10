@@ -21,7 +21,7 @@ public final class InfoPanelComponent {
     private static Element renderPlanMode(CliController ctrl) {
         String slug = ctrl.planSlug() != null ? ctrl.planSlug() : "—";
         return column(
-            row(spacer(2), text("📋 PLAN MODE").bold().yellow().fit(), text(" — read-only tools only").dim().fit(), spacer()),
+            row(spacer(2), text("PLAN MODE").bold().yellow().fit(), text(" — read-only tools only").dim().fit(), spacer()),
             row(spacer(2), text("Plan: ").dim().fit(), text(slug).fit(), spacer()),
             text(""),
             row(spacer(2), text("Shift+Tab or /plan to exit · Ctrl+O to expand results").dim().fit(), spacer()),
