@@ -174,19 +174,17 @@ public final class CliState {
     public String activeAgentName() { return activeAgentName; }
     public List<String> agentToolCalls() { return agentToolCalls; }
 
-    /** Remove oldest indented tool call lines + their collapse hints to keep max N tool groups. */
-    public void trimAgentToolLines(int maxGroups) {
-        // Count indented ToolCall lines
+    /** Keep max N ToolCall groups (ToolCall + following CollapseHint) in output. Removes oldest. */
+    public void trimToolLines(int maxGroups) {
         int count = 0;
         for (OutputLine line : outputLines) {
-            if (line instanceof OutputLine.ToolCall tc && tc.indented()) count++;
+            if (line instanceof OutputLine.ToolCall) count++;
         }
-        // Remove oldest groups (ToolCall + following CollapseHint/Timing)
         while (count > maxGroups) {
             for (int i = 0; i < outputLines.size(); i++) {
-                if (outputLines.get(i) instanceof OutputLine.ToolCall tc && tc.indented()) {
+                if (outputLines.get(i) instanceof OutputLine.ToolCall) {
                     outputLines.remove(i);
-                    // Also remove following collapse hint if present
+                    // Remove following CollapseHint too
                     if (i < outputLines.size() && outputLines.get(i) instanceof OutputLine.CollapseHint) {
                         outputLines.remove(i);
                     }

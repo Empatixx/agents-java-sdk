@@ -60,9 +60,9 @@ public final class TuiRenderer implements Renderer {
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
             boolean inAgent = state.activeAgentName() != null;
+            // Keep max 5 tool call groups visible in output log
+            state.trimToolLines(5);
             if (inAgent) {
-                // Keep max 5 sub-agent tool groups in output log
-                state.trimAgentToolLines(5);
                 state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
             }
             state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING, inAgent));

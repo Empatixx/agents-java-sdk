@@ -11,12 +11,12 @@ public class TokenBudget {
     public void recordTurn(int inputTokens, int outputTokens) {
         totalTokensUsed += inputTokens + outputTokens;
         turnCount++;
-        if (turnCount > 1 && outputTokens < 500) continuationCount++;
+        if (turnCount > 1 && outputTokens < 100) continuationCount++;
         else continuationCount = 0;
     }
 
     public boolean isOverBudget() { return totalTokensUsed >= maxBudget; }
-    public boolean isDiminishingReturns() { return continuationCount >= 3; }
+    public boolean isDiminishingReturns() { return continuationCount >= 5; }
     public int remaining() { return Math.max(0, maxBudget - totalTokensUsed); }
     public int totalUsed() { return totalTokensUsed; }
     public int turnCount() { return turnCount; }
