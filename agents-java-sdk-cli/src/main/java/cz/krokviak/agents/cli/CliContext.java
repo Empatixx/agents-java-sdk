@@ -38,6 +38,7 @@ public final class CliContext {
     private String sessionId;
     private final List<InputItem> history;
     private volatile boolean planMode;
+    private volatile Runnable planModeListener;
 
     public CliContext(Model model, String modelId, String apiKey, String baseUrl,
                      Renderer output, PermissionManager permissions,
@@ -88,5 +89,9 @@ public final class CliContext {
 
     public void setSessionId(String sessionId) { this.sessionId = sessionId; }
     public boolean isPlanMode() { return planMode; }
-    public void setPlanMode(boolean planMode) { this.planMode = planMode; }
+    public void setPlanMode(boolean planMode) {
+        this.planMode = planMode;
+        if (planModeListener != null) planModeListener.run();
+    }
+    public void onPlanModeChange(Runnable listener) { this.planModeListener = listener; }
 }

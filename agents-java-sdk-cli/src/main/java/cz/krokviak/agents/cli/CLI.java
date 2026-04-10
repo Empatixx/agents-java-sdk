@@ -111,6 +111,12 @@ public class CLI {
             output, permissionManager, compactor, cwd, systemPrompt, session, config.sessionId(),
             taskManager, mailboxManager);
 
+        // Sync plan mode state to CliController for TUI display
+        if (ctrl != null) {
+            final var fCtrl = ctrl;
+            ctx.onPlanModeChange(() -> fCtrl.setPlanMode(ctx.isPlanMode()));
+        }
+
         // Hooks (plan mode → guardrail → permission, in order)
         Hooks hooks = new Hooks();
         var planStore = new cz.krokviak.agents.cli.plan.PlanStore();
@@ -186,7 +192,7 @@ public class CLI {
         commands.register(new UndoCommand());
         commands.register(new SessionCommand());
         commands.register(new TasksCommand(taskManager));
-        commands.register(new PlanCommand());
+        commands.register(new PlanCommand(planStore));
         commands.register(new DiffCommand());
         commands.register(new ContextCommand());
         commands.register(new DoctorCommand());
