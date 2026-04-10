@@ -70,21 +70,16 @@ public final class TuiRenderer implements Renderer {
     public void printToolResult(String name, String output) {
         if (output == null || output.isEmpty()) return;
         if ("agent".equals(name)) return;
-        String[] lines = output.split("\n", -1);
+        String[] allLines = output.split("\n", -1);
+        // Store timing start — will be merged when printToolTiming is called
         onRenderThread(() -> {
-            // Update tool call status to completed
             state.updateLast(OutputLine.ToolCall.class, tc -> tc.withStatus(ToolCallStatus.COMPLETED));
-
-            if (lines.length <= CliState.COLLAPSED_PREVIEW_LINES) {
-                for (String line : lines) {
-                    state.addLine(new OutputLine.Result(line));
-                }
-            } else {
-                for (int i = 0; i < CliState.COLLAPSED_PREVIEW_LINES; i++) {
-                    state.addLine(new OutputLine.Result(lines[i]));
-                }
-                state.addLine(new OutputLine.CollapseHint(lines.length - CliState.COLLAPSED_PREVIEW_LINES));
-                state.pushCollapsed(new CliState.CollapsedResult(output, lines.length));
+            int previewCount = Math.min(allLines.length, CliState.COLLAPSED_PREVIEW_LINES);
+            String[] preview = new String[previewCount];
+            System.arraycopy(allLines, 0, preview, 0, previewCount);
+            state.addLine(new OutputLine.ToolOutput(preview, allLines.length, 0, allLines.length <= previewCount));
+            if (allLines.length > previewCount) {
+                state.pushCollapsed(new CliState.CollapsedResult(output, allLines.length));
             }
         });
     }
@@ -92,7 +87,11 @@ public final class TuiRenderer implements Renderer {
     @Override
     public void printToolTiming(long startNanos) {
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
-        onRenderThread(() -> state.addLine(new OutputLine.Timing(ms)));
+        onRenderThread(() -> {
+            // Merge timing into last ToolOutput
+            state.updateLast(OutputLine.ToolOutput.class,
+                to -> new OutputLine.ToolOutput(to.previewLines(), to.totalLines(), ms, to.expanded()));
+        });
     }
 
     @Override
@@ -249,10 +248,9 @@ public final class TuiRenderer implements Renderer {
             if (!state.hasCollapsed()) return;
             CliState.CollapsedResult cr = state.popCollapsed();
             if (cr == null) return;
-            String[] lines = cr.output().split("\n", -1);
-            for (int i = CliState.COLLAPSED_PREVIEW_LINES; i < lines.length; i++) {
-                state.addLine(new OutputLine.Result(lines[i]));
-            }
+            String[] allLines = cr.output().split("\n", -1);
+            // Update last ToolOutput to show all lines
+            state.updateLast(OutputLine.ToolOutput.class, to -> to.withExpanded(allLines));
         });
     }
 
