@@ -25,7 +25,8 @@ public final class CliApp extends ToolkitApp {
     private final BlockingQueue<String> inputQueue = new LinkedBlockingQueue<>();
     private final CountDownLatch ready = new CountDownLatch(1);
     private final dev.tamboui.toolkit.elements.ListElement<?> permList = list();
-    private Runnable planModeToggle; // set by CLI.java after CliContext is ready
+    private Runnable planModeToggle;
+    private dev.tamboui.tui.bindings.Bindings appBindings;
 
     public CliApp(CliController ctrl, TuiRenderer renderer) {
         this.ctrl = ctrl;
@@ -40,26 +41,25 @@ public final class CliApp extends ToolkitApp {
 
     @Override
     protected TuiConfig configure() {
-        return TuiConfig.builder().tickRate(Duration.ofMillis(100)).build();
+        appBindings = dev.tamboui.tui.bindings.BindingSets.standard().toBuilder()
+            .bind(dev.tamboui.tui.bindings.KeyTrigger.key(
+                dev.tamboui.tui.event.KeyCode.TAB, true, false, false), "planMode")
+            .bind(dev.tamboui.tui.bindings.KeyTrigger.ctrl('o'), "expandCollapse")
+            .build();
+        return TuiConfig.builder()
+            .tickRate(Duration.ofMillis(100))
+            .bindings(appBindings)
+            .build();
     }
 
     @Override
     protected void onStart() {
         renderer.activate(runner());
 
-        // Global key handler — fires BEFORE focus/Tab routing
-        runner().eventRouter().addGlobalHandler(event -> {
-            if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
-            if (key.isCtrlC()) { quit(); return EventResult.HANDLED; }
-            // Ctrl+O (char 15) = expand/collapse
-            if (key.character() == 15) { renderer.toggleExpand(); return EventResult.HANDLED; }
-            // Shift+Tab = toggle plan mode
-            if (key.isKey(dev.tamboui.tui.event.KeyCode.TAB) && key.hasShift()) {
-                togglePlanMode();
-                return EventResult.HANDLED;
-            }
-            return EventResult.UNHANDLED;
-        });
+        var actions = new dev.tamboui.tui.bindings.ActionHandler(appBindings);
+        actions.on("planMode", _ -> togglePlanMode());
+        actions.on("expandCollapse", _ -> renderer.toggleExpand());
+        runner().eventRouter().addGlobalHandler(actions);
 
         ready.countDown();
     }
