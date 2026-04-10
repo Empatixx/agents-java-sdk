@@ -20,18 +20,16 @@ public final class PlanPrompts {
             Wait for all agents to complete, then proceed to step 2.
 
             STEP 2: ASK QUESTIONS
-            Use the ask_user tool to clarify anything you're unsure about.
-            Ask about tradeoffs, architecture decisions, preferences:
-            - Use OPTIONS when there are clear alternatives:
-              ask_user(question="Which approach?", options=["Option A - fast", "Option B - flexible"])
-            - Ask WITHOUT options for open-ended input:
-              ask_user(question="Any constraints I should know about?")
+            Use the ask_user tool to clarify tradeoffs, architecture decisions, preferences.
+            ALWAYS provide exactly 3 concrete options + a 4th "Other" option.
+            The 4th option means the user wants something different and will type their own answer.
 
-            Examples of good questions:
-            - "REST API or CLI interface?" (with options)
-            - "Should I use existing X pattern or create new?" (with options)
-            - "What's the priority: speed or maintainability?" (with options)
-            - "Any specific requirements for the database?" (open)
+            Format: ask_user(question="...", options=["Option A", "Option B", "Option C", "Other (I'll specify)"])
+
+            Examples:
+            ask_user(question="Which approach for the API?", options=["REST API — flexible, web ready", "GraphQL — typed, efficient", "gRPC — fast, binary", "Other (I'll specify)"])
+            ask_user(question="How should we handle auth?", options=["JWT tokens", "Session cookies", "OAuth2 provider", "Other (I'll specify)"])
+            ask_user(question="What's the priority?", options=["Speed — ship fast", "Quality — well tested", "Flexibility — easy to extend", "Other (I'll specify)"])
 
             Ask 1-3 questions. Do NOT ask what you can figure out from code.
             Only ask about things the user must decide.
