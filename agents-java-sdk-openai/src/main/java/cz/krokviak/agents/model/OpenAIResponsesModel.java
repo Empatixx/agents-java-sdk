@@ -16,7 +16,7 @@ public class OpenAIResponsesModel implements Model {
     private final String modelId;
 
     public OpenAIResponsesModel(String apiKey) {
-        this(apiKey, "https://api.openai.com/v1", "gpt-4.1");
+        this(apiKey, "https://api.openai.com/v1", "gpt-5.4-2026-03-05");
     }
 
     public OpenAIResponsesModel(String apiKey, String baseUrl, String modelId) {
@@ -28,23 +28,20 @@ public class OpenAIResponsesModel implements Model {
     @Override
     public ModelResponse call(LlmContext context, ModelSettings settings) {
         ResponsesDto.Request body = buildRequestBody(context, settings, false);
-
         try {
             ResponsesDto.Response response = httpClient.post(
                 "/responses", body, ResponsesDto.Response.class);
             return parseResponse(response);
         } catch (Exception e) {
-            throw new RuntimeException("OpenAI Responses API call failed", e);
+            throw new RuntimeException("OpenAI Responses API call failed: " + e.getMessage(), e);
         }
     }
 
     @Override
     public ModelResponseStream callStreamed(LlmContext context, ModelSettings settings) {
         ResponsesDto.Request body = buildRequestBody(context, settings, true);
-
         InputStream stream = httpClient.postStream("/responses", body);
         Iterator<SseParser.SseEvent> sseIterator = SseParser.stream(stream);
-
         return new OpenAIResponseStream(sseIterator, mapper);
     }
 
@@ -101,9 +98,7 @@ public class OpenAIResponsesModel implements Model {
                     String content = "";
                     if (item.content() != null) {
                         for (ResponsesDto.ContentPart c : item.content()) {
-                            if ("output_text".equals(c.type())) {
-                                content = c.text();
-                            }
+                            if ("output_text".equals(c.type())) content = c.text();
                         }
                     }
                     outputs.add(new ModelResponse.OutputItem.Message(content));
@@ -113,20 +108,23 @@ public class OpenAIResponsesModel implements Model {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> parsed = mapper.readValue(item.arguments(), Map.class);
                         args = parsed;
-                    } catch (Exception e) {
-                        args = Map.of();
-                    }
+                    } catch (Exception e) { args = Map.of(); }
                     outputs.add(new ModelResponse.OutputItem.ToolCallRequest(item.callId(), item.name(), args));
                 }
             }
         }
-
         return new ModelResponse(id, outputs, new Usage(inputTokens, outputTokens));
     }
 
     private static class OpenAIResponseStream implements ModelResponseStream {
         private final Iterator<SseParser.SseEvent> sseIterator;
         private final ObjectMapper mapper;
+
+        // Accumulate tool call state
+        private final Map<String, String> toolCallNames = new LinkedHashMap<>();
+        private final Map<String, StringBuilder> toolCallArgs = new LinkedHashMap<>();
+        private String currentCallId; // track current function_call being streamed
+        private String responseId;
 
         OpenAIResponseStream(Iterator<SseParser.SseEvent> sseIterator, ObjectMapper mapper) {
             this.sseIterator = sseIterator;
@@ -136,38 +134,87 @@ public class OpenAIResponsesModel implements Model {
         @Override
         public Iterator<Event> iterator() {
             return new Iterator<>() {
-                @Override
-                public boolean hasNext() { return sseIterator.hasNext(); }
+                @Override public boolean hasNext() { return sseIterator.hasNext(); }
 
                 @Override
                 public Event next() {
-                    SseParser.SseEvent sse = sseIterator.next();
-                    if (sse.isDone()) return new Event.Done(null);
-                    try {
-                        ResponsesDto.StreamEvent event = mapper.readValue(
-                            sse.data(), ResponsesDto.StreamEvent.class);
-                        String type = event.type();
-                        if ("response.output_text.delta".equals(type)) {
-                            return new Event.TextDelta(event.delta());
+                    while (sseIterator.hasNext()) {
+                        SseParser.SseEvent sse = sseIterator.next();
+                        if (sse.isDone()) return buildDone();
+
+                        try {
+                            ResponsesDto.StreamEvent event = mapper.readValue(
+                                sse.data(), ResponsesDto.StreamEvent.class);
+                            String type = event.type();
+
+                            if ("response.created".equals(type) || "response.in_progress".equals(type)) {
+                                continue; // skip metadata events
+                            }
+
+                            if ("response.output_text.delta".equals(type)) {
+                                return new Event.TextDelta(event.delta() != null ? event.delta() : "");
+                            }
+
+                            // Function call: track call_id from output_item.added
+                            if ("response.output_item.added".equals(type)) {
+                                if (event.callId() != null) {
+                                    currentCallId = event.callId();
+                                    if (event.name() != null) {
+                                        toolCallNames.put(currentCallId, event.name());
+                                    }
+                                }
+                                continue;
+                            }
+
+                            if ("response.function_call_arguments.delta".equals(type)) {
+                                String callId = event.callId() != null ? event.callId() : currentCallId;
+                                if (callId == null) callId = "unknown-" + toolCallArgs.size();
+                                currentCallId = callId;
+                                if (event.name() != null) toolCallNames.putIfAbsent(callId, event.name());
+                                toolCallArgs.computeIfAbsent(callId, _ -> new StringBuilder())
+                                    .append(event.delta() != null ? event.delta() : "");
+                                return new Event.ToolCallDelta(callId,
+                                    toolCallNames.getOrDefault(callId, ""),
+                                    event.delta() != null ? event.delta() : "");
+                            }
+
+                            if ("response.function_call_arguments.done".equals(type)) {
+                                // Args complete — nothing extra to emit
+                                continue;
+                            }
+
+                            if ("response.completed".equals(type) || "response.done".equals(type)) {
+                                return buildDone();
+                            }
+
+                            // Skip other event types
+                        } catch (Exception e) {
+                            // Skip unparseable events
                         }
-                        if ("response.function_call_arguments.delta".equals(type)) {
-                            return new Event.ToolCallDelta(
-                                event.callId(),
-                                event.name() != null ? event.name() : "",
-                                event.delta());
-                        }
-                        if ("response.completed".equals(type)) {
-                            return new Event.Done(null);
-                        }
-                        return new Event.TextDelta("");
-                    } catch (Exception e) {
-                        return new Event.TextDelta("");
                     }
+                    return buildDone();
                 }
             };
         }
 
-        @Override
-        public void close() {}
+        private Event.Done buildDone() {
+            List<ModelResponse.OutputItem> outputs = new ArrayList<>();
+            for (var entry : toolCallNames.entrySet()) {
+                String callId = entry.getKey();
+                String name = entry.getValue();
+                String argsJson = toolCallArgs.containsKey(callId)
+                    ? toolCallArgs.get(callId).toString() : "{}";
+                Map<String, Object> args;
+                try {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> parsed = mapper.readValue(argsJson, Map.class);
+                    args = parsed;
+                } catch (Exception e) { args = Map.of(); }
+                outputs.add(new ModelResponse.OutputItem.ToolCallRequest(callId, name, args));
+            }
+            return new Event.Done(new ModelResponse(responseId, outputs, Usage.zero()));
+        }
+
+        @Override public void close() {}
     }
 }

@@ -47,7 +47,8 @@ public class StreamingToolExecutor {
     }
 
     public void onToolCallDelta(String id, String name, String argsDelta) {
-        toolCallNames.putIfAbsent(id, name);
+        if (id == null || argsDelta == null) return;
+        toolCallNames.putIfAbsent(id, name != null ? name : "");
         toolCallArgs.computeIfAbsent(id, _ -> new StringBuilder()).append(argsDelta);
     }
 
@@ -57,6 +58,7 @@ public class StreamingToolExecutor {
      * {@link #collectResults}.
      */
     public void onToolCallComplete(String id) {
+        if (id == null) return;
         if (!completedToolCalls.add(id)) return; // atomic check-and-add
         String name = toolCallNames.get(id);
         if (name != null && ToolClassifier.isReadOnly(name)) {

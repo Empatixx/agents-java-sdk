@@ -122,7 +122,10 @@ public class AgentRunner {
                 ctx.output().printError("Reached maximum turns (" + maxTurns + ")");
             }
         } catch (Exception e) {
-            ctx.output().printError(e.getMessage());
+            String msg = e.getMessage();
+            if (msg == null) msg = e.getClass().getSimpleName();
+            ctx.output().printError(msg);
+            e.printStackTrace(System.err);
         }
 
         saveSession(newItems);
