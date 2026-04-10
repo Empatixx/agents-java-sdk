@@ -55,22 +55,8 @@ public final class CliApp extends ToolkitApp {
             this::handleSubmit,
             event -> {
                 if (event.isCtrlC()) { quit(); return EventResult.HANDLED; }
-                if (event.character() == 15 || (event.hasCtrl() && event.isChar('o'))) {
-                    renderer.toggleExpand();
-                    return EventResult.HANDLED;
-                }
-                if (event.isChar('\t') || event.isKey(dev.tamboui.tui.event.KeyCode.TAB)) {
-                    if (inputState.text().isEmpty()) {
-                        togglePlanMode();
-                        return EventResult.HANDLED;
-                    }
-                    var suggestions = ctrl.suggestCommands(inputState.text());
-                    if (!suggestions.isEmpty()) {
-                        inputState.setText("/" + suggestions.getFirst().command());
-                        inputState.moveCursorToEnd();
-                        return EventResult.HANDLED;
-                    }
-                }
+                if (event.character() == 15) { renderer.toggleExpand(); return EventResult.HANDLED; }
+                if (event.character() == 16) { togglePlanMode(); return EventResult.HANDLED; }
                 return EventResult.UNHANDLED;
             },
             renderer::resolvePermission
