@@ -73,14 +73,9 @@ public final class TuiRenderer implements Renderer {
         String[] lines = output.split("\n", -1);
         onRenderThread(() -> {
             state.updateLast(OutputLine.ToolCall.class, tc -> tc.withStatus(ToolCallStatus.COMPLETED));
-            int preview = Math.min(lines.length, CliState.COLLAPSED_PREVIEW_LINES);
-            for (int i = 0; i < preview; i++) {
-                state.addLine(new OutputLine.Result(lines[i]));
-            }
-            if (lines.length > preview) {
-                state.addLine(new OutputLine.CollapseHint(lines.length - preview, 0));
-                state.pushCollapsed(new CliState.CollapsedResult(output, lines.length));
-            }
+            // Always collapsed by default — just show line count
+            state.addLine(new OutputLine.CollapseHint(lines.length, 0));
+            state.pushCollapsed(new CliState.CollapsedResult(output, lines.length));
         });
     }
 

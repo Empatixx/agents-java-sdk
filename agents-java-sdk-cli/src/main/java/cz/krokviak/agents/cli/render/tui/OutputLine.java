@@ -16,13 +16,14 @@ public sealed interface OutputLine {
 
     record Text(String content) implements OutputLine {
         public StyledElement<?> render() {
-            return text("  " + content);
+            return row(text("  ● ").dim().fit(), text(content).fit());
         }
     }
 
     record UserMessage(String content) implements OutputLine {
         public StyledElement<?> render() {
-            return row(text(" ❯ ").bold().cyan().fit(), text(content).bold().fit());
+            return row(text(" ❯ ").bold().cyan().fit(), text(content).bold().fit())
+                .bg(Color.indexed(236));  // dark gray background
         }
     }
 
