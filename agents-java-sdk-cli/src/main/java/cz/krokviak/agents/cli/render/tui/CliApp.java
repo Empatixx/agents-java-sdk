@@ -53,8 +53,8 @@ public final class CliApp extends ToolkitApp {
             if (key.isCtrlC()) { quit(); return EventResult.HANDLED; }
             // Ctrl+O (char 15) = expand/collapse
             if (key.character() == 15) { renderer.toggleExpand(); return EventResult.HANDLED; }
-            // Tab = toggle plan mode (when input empty)
-            if (key.isKey(dev.tamboui.tui.event.KeyCode.TAB) && inputState.text().isEmpty()) {
+            // Shift+Tab = toggle plan mode
+            if (key.isKey(dev.tamboui.tui.event.KeyCode.TAB) && key.hasShift()) {
                 togglePlanMode();
                 return EventResult.HANDLED;
             }
