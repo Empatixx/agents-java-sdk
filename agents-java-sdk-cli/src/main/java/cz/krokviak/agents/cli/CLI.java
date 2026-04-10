@@ -113,7 +113,8 @@ public class CLI {
 
         // Hooks (plan mode → guardrail → permission, in order)
         Hooks hooks = new Hooks();
-        hooks.register(new PlanModeHook());
+        var planStore = new cz.krokviak.agents.cli.plan.PlanStore();
+        hooks.register(new PlanModeHook(planStore));
         hooks.register(new GuardrailHook());
         hooks.register(new PermissionHook(permissionManager));
 
@@ -129,8 +130,8 @@ public class CLI {
         toolList.add(new PowerShellTool(cwd));
 
         // Tools — planning & interaction
-        toolList.add(new EnterPlanModeTool(ctx));
-        toolList.add(new ExitPlanModeTool(ctx));
+        toolList.add(new EnterPlanModeTool(ctx, planStore));
+        toolList.add(new ExitPlanModeTool(ctx, planStore));
         toolList.add(new AskUserQuestionTool(ctx));
         toolList.add(new SendMessageTool(mailboxManager));
 
@@ -214,6 +215,32 @@ public class CLI {
             output.println("\033[2mLoaded project instructions from CLAUDE.md\033[0m");
         }
         output.println("Type /help for commands, /exit to quit");
+
+        // Wire plan mode toggle (Tab key in TUI)
+        if (cliApp != null) {
+            final var fCtrl = ctrl;
+            final var fCtx = ctx;
+            final var fPlanStore = planStore;
+            cliApp.setPlanModeToggle(() -> {
+                boolean entering = !fCtx.isPlanMode();
+                fCtx.setPlanMode(entering);
+                fCtrl.setPlanMode(entering);
+                if (entering) {
+                    try {
+                        String slug = fPlanStore.createPlan();
+                        fCtrl.setPlanSlug(slug);
+                        fCtrl.addLine(new cz.krokviak.agents.cli.render.tui.OutputLine.Dim(
+                            "📋 Plan mode ON — plan: " + slug));
+                    } catch (Exception e) {
+                        fCtrl.addLine(new cz.krokviak.agents.cli.render.tui.OutputLine.Error(
+                            "Failed to create plan: " + e.getMessage()));
+                    }
+                } else {
+                    fCtrl.addLine(new cz.krokviak.agents.cli.render.tui.OutputLine.Dim(
+                        "✓ Plan mode OFF — all tools available"));
+                }
+            });
+        }
 
         // Run
         AgentRunner runner = new AgentRunner(ctx, toolDispatcher, config.maxTurns());

@@ -237,4 +237,14 @@ public final class CliController {
         if (input == null || !input.startsWith("/") || input.length() < 2) return List.of();
         return trie.search(input.substring(1));
     }
+
+    // ========================= Plan mode =========================
+
+    private boolean planMode;
+    private String planSlug;
+
+    public void setPlanMode(boolean active) { this.planMode = active; }
+    public boolean isPlanMode() { return planMode; }
+    public void setPlanSlug(String slug) { this.planSlug = slug; }
+    public String planSlug() { return planSlug; }
 }

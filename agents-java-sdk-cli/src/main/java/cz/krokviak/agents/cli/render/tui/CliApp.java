@@ -25,10 +25,17 @@ public final class CliApp extends ToolkitApp {
     private final BlockingQueue<String> inputQueue = new LinkedBlockingQueue<>();
     private final CountDownLatch ready = new CountDownLatch(1);
     private final dev.tamboui.toolkit.elements.ListElement<?> permList = list();
+    private Runnable planModeToggle; // set by CLI.java after CliContext is ready
 
     public CliApp(CliController ctrl, TuiRenderer renderer) {
         this.ctrl = ctrl;
         this.renderer = renderer;
+    }
+
+    public void setPlanModeToggle(Runnable toggle) { this.planModeToggle = toggle; }
+
+    private void togglePlanMode() {
+        if (planModeToggle != null) planModeToggle.run();
     }
 
     @Override
@@ -52,11 +59,18 @@ public final class CliApp extends ToolkitApp {
                     renderer.toggleExpand();
                     return EventResult.HANDLED;
                 }
-                var suggestions = ctrl.suggestCommands(inputState.text());
-                if (event.isChar('\t') && !suggestions.isEmpty()) {
-                    inputState.setText("/" + suggestions.getFirst().command());
-                    inputState.moveCursorToEnd();
-                    return EventResult.HANDLED;
+                if (event.isChar('\t')) {
+                    // Tab: toggle plan mode if input empty, autocomplete if typing /
+                    if (inputState.text().isEmpty()) {
+                        togglePlanMode();
+                        return EventResult.HANDLED;
+                    }
+                    var suggestions = ctrl.suggestCommands(inputState.text());
+                    if (!suggestions.isEmpty()) {
+                        inputState.setText("/" + suggestions.getFirst().command());
+                        inputState.moveCursorToEnd();
+                        return EventResult.HANDLED;
+                    }
                 }
                 return EventResult.UNHANDLED;
             },

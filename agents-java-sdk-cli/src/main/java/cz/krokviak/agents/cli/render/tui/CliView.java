@@ -38,7 +38,7 @@ public final class CliView {
         return column(
             OutputLogComponent.render(ctrl),
             SpinnerBarComponent.render(ctrl),
-            InputAreaComponent.render(inputState, onSubmit, inputKeys),
+            InputAreaComponent.render(inputState, ctrl.isPlanMode(), onSubmit, inputKeys),
             InfoPanelComponent.render(ctrl, suggestions)
         );
     }

@@ -7,22 +7,22 @@ import dev.tamboui.widgets.input.TextInputState;
 
 import static dev.tamboui.toolkit.Toolkit.*;
 
-/** Text input area with rounded border and horizontal margin. */
 public final class InputAreaComponent {
     private InputAreaComponent() {}
 
-    public static Element render(TextInputState inputState,
+    public static Element render(TextInputState inputState, boolean planMode,
                                  Runnable onSubmit, KeyEventHandler extraKeys) {
+        Color borderColor = planMode ? Color.YELLOW : Color.CYAN;
+        String title = planMode ? "📋 plan" : "❯";
         return row(
             spacer(1),
             panel(
                 textInput(inputState)
-                    .placeholder("Type a message...")
-                    .id("input")
+                    .placeholder(planMode ? "Plan mode — read-only..." : "Type a message...")
                     .focusable()
                     .onSubmit(onSubmit)
                     .onKeyEvent(extraKeys)
-            ).title("❯").rounded().borderColor(Color.CYAN).fill(),
+            ).title(title).rounded().borderColor(borderColor).fill(),
             spacer(1)
         ).length(3);
     }

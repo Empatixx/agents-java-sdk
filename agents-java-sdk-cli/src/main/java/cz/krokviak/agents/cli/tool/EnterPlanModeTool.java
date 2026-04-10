@@ -1,26 +1,23 @@
 package cz.krokviak.agents.cli.tool;
 
 import cz.krokviak.agents.cli.CliContext;
+import cz.krokviak.agents.cli.plan.PlanStore;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 
 import java.util.List;
 import java.util.Map;
 
-/**
- * Allows the model to enter plan mode — read-only exploration with no edits allowed.
- * The model uses this when it needs to think through an approach before implementing.
- */
 public class EnterPlanModeTool implements ExecutableTool {
     private final CliContext ctx;
+    private final PlanStore planStore;
     private final ToolDefinition toolDefinition;
 
-    public EnterPlanModeTool(CliContext ctx) {
+    public EnterPlanModeTool(CliContext ctx, PlanStore planStore) {
         this.ctx = ctx;
+        this.planStore = planStore;
         this.toolDefinition = new ToolDefinition("enter_plan_mode",
-            "Enter plan mode. In plan mode, only read-only tools are available. " +
-                "Use this when you need to explore and think before making changes. " +
-                "Call exit_plan_mode when ready to implement.",
+            "Enter plan mode. Only read-only tools available. Write your plan to the plan file. Call exit_plan_mode when done.",
             Map.of("type", "object", "properties", Map.of(
                 "reason", Map.of("type", "string", "description", "Why you're entering plan mode")
             ), "required", List.of()));
@@ -34,8 +31,21 @@ public class EnterPlanModeTool implements ExecutableTool {
     public ToolOutput execute(ToolArgs args, ToolContext<?> toolCtx) {
         String reason = args.get("reason", String.class);
         ctx.setPlanMode(true);
-        ctx.output().println("\033[33m📋 Entered plan mode" +
-            (reason != null ? ": " + reason : "") + "\033[0m");
-        return ToolOutput.text("Plan mode active. Only read-only tools available. Call exit_plan_mode when ready to implement.");
+
+        String slug;
+        try {
+            slug = planStore.createPlan();
+        } catch (Exception e) {
+            return ToolOutput.text("Plan mode active but failed to create plan file: " + e.getMessage());
+        }
+
+        String path = planStore.currentPlanPath();
+        ctx.output().println("📋 Plan mode ON" + (reason != null ? " — " + reason : ""));
+
+        return ToolOutput.text(
+            "Plan mode active. Only read-only tools available.\n" +
+            "Plan file: " + path + "\n" +
+            "Write your plan to this file using write_file or edit_file (these are allowed for the plan file).\n" +
+            "Call exit_plan_mode when your plan is ready for user approval.");
     }
 }

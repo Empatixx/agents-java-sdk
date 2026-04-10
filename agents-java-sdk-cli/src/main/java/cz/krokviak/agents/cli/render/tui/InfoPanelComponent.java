@@ -14,7 +14,19 @@ public final class InfoPanelComponent {
     public static Element render(CliController ctrl, List<CommandTrie.Match> suggestions) {
         if (!suggestions.isEmpty()) return renderSuggestions(suggestions);
         if (ctrl.hasActiveAgents()) return renderAgents(ctrl);
+        if (ctrl.isPlanMode()) return renderPlanMode(ctrl);
         return renderStatus(ctrl);
+    }
+
+    private static Element renderPlanMode(CliController ctrl) {
+        String slug = ctrl.planSlug() != null ? ctrl.planSlug() : "—";
+        return column(
+            row(spacer(2), text("📋 PLAN MODE").bold().yellow().fit(), text(" — read-only tools only").dim().fit(), spacer()),
+            row(spacer(2), text("Plan: ").dim().fit(), text(slug).fit(), spacer()),
+            text(""),
+            row(spacer(2), text("Tab to exit plan mode · AI writes plan, then asks for approval").dim().fit(), spacer()),
+            text("")
+        ).length(HEIGHT);
     }
 
     private static Element renderSuggestions(List<CommandTrie.Match> suggestions) {
