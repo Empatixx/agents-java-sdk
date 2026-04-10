@@ -56,14 +56,13 @@ public final class CliApp extends ToolkitApp {
     protected void onStart() {
         renderer.activate(runner());
 
-        // Global key handler — fires AFTER focused element, BEFORE unfocused elements
-        // Tab/Shift+Tab are consumed by focus routing and never reach here
         runner().eventRouter().addGlobalHandler(event -> {
             if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
-            // Ctrl+G (char 7) = toggle plan mode
-            if (key.character() == 7) { togglePlanMode(); return EventResult.HANDLED; }
-            // Ctrl+O (char 15) = expand/collapse
-            if (key.character() == 15) { renderer.toggleExpand(); return EventResult.HANDLED; }
+            if (!key.hasCtrl()) return EventResult.UNHANDLED;
+            // Ctrl+G = toggle plan mode
+            if (key.character() == 'g') { togglePlanMode(); return EventResult.HANDLED; }
+            // Ctrl+O = expand/collapse
+            if (key.character() == 'o') { renderer.toggleExpand(); return EventResult.HANDLED; }
             return EventResult.UNHANDLED;
         });
 
