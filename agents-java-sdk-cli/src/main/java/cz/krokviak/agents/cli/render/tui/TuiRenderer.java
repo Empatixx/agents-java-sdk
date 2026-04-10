@@ -171,6 +171,7 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void renderToolCall(String name, Map<String, Object> args, ToolCallStatus status) {
+        if (state.activeAgentName() != null) return; // agent activity only in info panel
         String icon = switch (status) {
             case PENDING -> "○"; case RUNNING -> "●"; case COMPLETED -> "✓"; case FAILED -> "✗";
         };
@@ -187,22 +188,32 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void renderAgentStatus(String agentName, AgentStatus status, String detail) {
-        String icon = switch (status) {
-            case STARTING -> "◌"; case RUNNING -> "●"; case WAITING -> "◎";
-            case COMPLETED -> "✓"; case FAILED -> "✗"; case KILLED -> "⊘";
-        };
         onRenderThread(() -> {
-            // Track active agent for info panel
+            // Track active agent for info panel (live updates there, not in log)
             if (status == AgentStatus.RUNNING || status == AgentStatus.STARTING) {
                 state.setActiveAgent(agentName);
-            } else if (status == AgentStatus.COMPLETED || status == AgentStatus.FAILED || status == AgentStatus.KILLED) {
-                state.clearActiveAgent();
+                // Update info panel detail
+                if (detail != null) state.setAgentDetail(detail);
+                return; // don't add to output log during run
             }
+
+            // Final status — one line in output log
+            state.clearActiveAgent();
+            String icon = switch (status) {
+                case COMPLETED -> "✓";
+                case FAILED -> "✗";
+                case KILLED -> "⊘";
+                default -> "●";
+            };
+            var iconEl = switch (status) {
+                case COMPLETED -> text(icon + " ").green().fit();
+                case FAILED -> text(icon + " ").red().fit();
+                default -> text(icon + " ").dim().fit();
+            };
             outputLog.add(row(
                 spacer(2),
-                text(icon + " ").cyan().fit(),
+                iconEl,
                 text(agentName).bold().fit(),
-                text(" — " + status.name().toLowerCase()).dim().fit(),
                 detail != null ? text(" " + detail).dim().fit() : text("").fit()
             ));
         });

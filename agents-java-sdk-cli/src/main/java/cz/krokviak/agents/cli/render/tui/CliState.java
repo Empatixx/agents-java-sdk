@@ -135,17 +135,23 @@ public final class CliState {
     // ---- Active agent tool call tracking ----
 
     private String activeAgentName;
+    private String agentDetail = "";
     private final List<String> agentToolCalls = new ArrayList<>();
 
     public void setActiveAgent(String name) {
         this.activeAgentName = name;
+        this.agentDetail = "";
         agentToolCalls.clear();
     }
 
     public void clearActiveAgent() {
         this.activeAgentName = null;
+        this.agentDetail = "";
         agentToolCalls.clear();
     }
+
+    public void setAgentDetail(String detail) { this.agentDetail = detail; }
+    public String agentDetail() { return agentDetail; }
 
     public void pushAgentToolCall(String line) {
         agentToolCalls.add(line);

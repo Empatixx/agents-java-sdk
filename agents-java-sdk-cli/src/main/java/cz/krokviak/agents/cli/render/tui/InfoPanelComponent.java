@@ -50,11 +50,13 @@ public final class InfoPanelComponent {
 
     private static Element renderAgentActivity(CliState state) {
         var rows = new Element[PANEL_HEIGHT];
-        // Line 0: agent header
+        // Line 0: agent header with progress detail
+        String detail = state.agentDetail().isEmpty() ? "running..." : state.agentDetail();
         rows[0] = row(
             spacer(2),
             spinner().cyan().fit(),
-            text(" " + state.activeAgentName() + " running...").bold().cyan().fit(),
+            text(" " + state.activeAgentName()).bold().cyan().fit(),
+            text("  " + detail).dim().fit(),
             spacer()
         );
         // Lines 1-4: last tool calls
