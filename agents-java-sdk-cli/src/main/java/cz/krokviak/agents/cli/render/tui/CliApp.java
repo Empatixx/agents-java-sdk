@@ -46,6 +46,21 @@ public final class CliApp extends ToolkitApp {
     @Override
     protected void onStart() {
         renderer.activate(runner());
+
+        // Global key handler — fires BEFORE focus/Tab routing
+        runner().eventRouter().addGlobalHandler(event -> {
+            if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
+            if (key.isCtrlC()) { quit(); return EventResult.HANDLED; }
+            // Ctrl+O (char 15) = expand/collapse
+            if (key.character() == 15) { renderer.toggleExpand(); return EventResult.HANDLED; }
+            // Tab = toggle plan mode (when input empty)
+            if (key.isKey(dev.tamboui.tui.event.KeyCode.TAB) && inputState.text().isEmpty()) {
+                togglePlanMode();
+                return EventResult.HANDLED;
+            }
+            return EventResult.UNHANDLED;
+        });
+
         ready.countDown();
     }
 
@@ -53,12 +68,7 @@ public final class CliApp extends ToolkitApp {
     protected Element render() {
         return CliView.render(ctrl, inputState, permList,
             this::handleSubmit,
-            event -> {
-                if (event.isCtrlC()) { quit(); return EventResult.HANDLED; }
-                if (event.character() == 15) { renderer.toggleExpand(); return EventResult.HANDLED; }
-                if (event.character() == 16) { togglePlanMode(); return EventResult.HANDLED; }
-                return EventResult.UNHANDLED;
-            },
+            event -> EventResult.UNHANDLED,
             renderer::resolvePermission
         );
     }
