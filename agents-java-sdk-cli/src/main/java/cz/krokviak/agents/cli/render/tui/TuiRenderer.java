@@ -55,6 +55,8 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void printToolCall(String name, Map<String, Object> args) {
+        // Agent tool handled by renderAgentStatus — skip to avoid duplicate
+        if ("agent".equals(name)) return;
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
             if (state.activeAgentName() != null) {
@@ -68,7 +70,7 @@ public final class TuiRenderer implements Renderer {
     @Override
     public void printToolResult(String name, String output) {
         if (output == null || output.isEmpty()) return;
-        if (state.activeAgentName() != null) return;
+        if (state.activeAgentName() != null || "agent".equals(name)) return;
         String[] lines = output.split("\n", -1);
         onRenderThread(() -> {
             // Update tool call status to completed
