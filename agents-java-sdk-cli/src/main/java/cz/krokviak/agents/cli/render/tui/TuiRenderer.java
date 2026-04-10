@@ -56,14 +56,16 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void printToolCall(String name, Map<String, Object> args) {
-        if ("agent".equals(name)) return; // agent shown via renderAgentStatus
+        if ("agent".equals(name)) return;
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
             boolean inAgent = state.activeAgentName() != null;
-            state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING, inAgent));
             if (inAgent) {
+                // Keep max 5 sub-agent tool groups in output log
+                state.trimAgentToolLines(5);
                 state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
             }
+            state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING, inAgent));
         });
     }
 
@@ -160,10 +162,10 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void renderToolCall(String name, Map<String, Object> args, ToolCallStatus status) {
+        if ("agent".equals(name)) return; // agent shown via renderAgentStatus
         if (state.activeAgentName() != null) return;
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
-            // Try to update existing tool call line, otherwise add new
             boolean updated = state.updateLast(OutputLine.ToolCall.class,
                 tc -> tc.name().equals(name) ? tc.withStatus(status) : tc);
             if (!updated) {
