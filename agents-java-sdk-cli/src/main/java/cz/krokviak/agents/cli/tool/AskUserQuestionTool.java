@@ -1,17 +1,18 @@
 package cz.krokviak.agents.cli.tool;
 
 import cz.krokviak.agents.cli.CliContext;
+import cz.krokviak.agents.cli.render.tui.TuiRenderer;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Allows the model to ask the user a question and get a response.
- * The model uses this when it needs clarification or a decision.
+ * Ask the user a question with optional selectable options.
+ * With options: shows arrow-key selector (like permission prompt).
+ * Without options: shows question, next user message is the answer.
+ * Read-only — allowed in plan mode.
  */
 public class AskUserQuestionTool implements ExecutableTool {
     private final CliContext ctx;
@@ -20,12 +21,13 @@ public class AskUserQuestionTool implements ExecutableTool {
     public AskUserQuestionTool(CliContext ctx) {
         this.ctx = ctx;
         this.toolDefinition = new ToolDefinition("ask_user",
-            "Ask the user a question and wait for their response. Use this when you need " +
-                "clarification, a decision, or user input before proceeding.",
+            "Ask the user a question. With options: shows selectable choices. " +
+                "Without options: shows question, user types answer. " +
+                "Use when you need clarification, a decision, or user input.",
             Map.of("type", "object", "properties", Map.of(
-                "question", Map.of("type", "string", "description", "The question to ask the user"),
+                "question", Map.of("type", "string", "description", "The question to ask"),
                 "options", Map.of("type", "array", "items", Map.of("type", "string"),
-                    "description", "Optional list of choices to present")
+                    "description", "2-4 selectable choices (optional)")
             ), "required", List.of("question")));
     }
 
@@ -37,36 +39,38 @@ public class AskUserQuestionTool implements ExecutableTool {
     @SuppressWarnings("unchecked")
     public ToolOutput execute(ToolArgs args, ToolContext<?> toolCtx) throws Exception {
         String question = args.get("question", String.class);
-        if (question == null || question.isBlank()) return ToolOutput.text("Error: question is required");
+        if (question == null || question.isBlank()) return ToolOutput.text("Error: question required");
 
-        ctx.output().println("");
-        ctx.output().println("\033[1;33m? " + question + "\033[0m");
+        List<String> options = null;
+        Object raw = args.raw().get("options");
+        if (raw instanceof List<?> list && !list.isEmpty()) {
+            options = list.stream().map(Object::toString).toList();
+        }
 
-        List<String> options = args.get("options", List.class);
-        if (options != null && !options.isEmpty()) {
-            for (int i = 0; i < options.size(); i++) {
-                ctx.output().println("  " + (i + 1) + ". " + options.get(i));
-            }
+        TuiRenderer renderer = ctx.tuiRenderer();
+
+        if (options != null && !options.isEmpty() && renderer != null) {
+            // Multiple choice — permission selector UI
+            String[] opts = options.toArray(new String[0]);
             ctx.output().println("");
+            int selected = renderer.promptPermission("❓ " + question, opts);
+            String answer = (selected >= 0 && selected < opts.length) ? opts[selected] : "(no answer)";
+            ctx.output().println("  → " + answer);
+            return ToolOutput.text("User answered: " + answer);
         }
 
-        System.out.print("\033[1myour answer> \033[0m");
-        System.out.flush();
+        // Free-text — show question, next user message is the answer
+        ctx.output().println("");
+        ctx.output().println("❓ " + question);
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        String answer = reader.readLine();
-        if (answer == null) answer = "(no response)";
-
-        // If they entered a number and we had options, resolve it
-        if (options != null && !options.isEmpty()) {
-            try {
-                int idx = Integer.parseInt(answer.trim()) - 1;
-                if (idx >= 0 && idx < options.size()) {
-                    answer = options.get(idx);
-                }
-            } catch (NumberFormatException ignored) {}
+        if (renderer != null) {
+            // Show single option to prompt user to type answer
+            String[] hint = {"(Type your answer in the input below)"};
+            renderer.promptPermission("❓ " + question, hint);
         }
 
-        return ToolOutput.text("User answered: " + answer.trim());
+        return ToolOutput.text(
+            "Question shown to user: \"" + question + "\". " +
+            "The user's next message will be their answer. Wait for it.");
     }
 }
