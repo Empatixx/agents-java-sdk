@@ -6,7 +6,6 @@ import dev.tamboui.widgets.common.ScrollBarPolicy;
 
 import static dev.tamboui.toolkit.Toolkit.*;
 
-/** Scrollable output log backed by reactive data binding. */
 public final class OutputLogComponent {
     private OutputLogComponent() {}
 
@@ -15,12 +14,7 @@ public final class OutputLogComponent {
         .scrollbar(ScrollBarPolicy.AS_NEEDED)
         .displayOnly();
 
-    public static ListElement<OutputLine> instance() { return LOG; }
-
-    public static Element render(CliState state) {
-        // Reactive: list rebuilds from outputLines each render cycle
-        return LOG
-            .data(state.outputLines(), OutputLine::render)
-            .fill();
+    public static Element render(CliController ctrl) {
+        return LOG.data(ctrl.outputLines(), OutputLine::render).fill();
     }
 }

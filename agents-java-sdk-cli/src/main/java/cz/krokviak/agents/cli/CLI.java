@@ -96,11 +96,11 @@ public class CLI {
         // Context — choose renderer. TamboUI for interactive terminal, PlainRenderer for piped.
         Renderer output;
         cz.krokviak.agents.cli.render.tui.CliApp cliApp = null;
-        cz.krokviak.agents.cli.render.tui.CliState tuiState = null;
+        cz.krokviak.agents.cli.render.tui.CliController ctrl = null;
         if (System.console() != null) {
-            tuiState = new cz.krokviak.agents.cli.render.tui.CliState();
-            var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(tuiState);
-            cliApp = new cz.krokviak.agents.cli.render.tui.CliApp(tuiState, tuiRenderer);
+            ctrl = new cz.krokviak.agents.cli.render.tui.CliController();
+            var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(ctrl);
+            cliApp = new cz.krokviak.agents.cli.render.tui.CliApp(ctrl, tuiRenderer);
             output = tuiRenderer;
             permissionManager.setTuiRenderer(tuiRenderer);
         } else {
@@ -197,9 +197,9 @@ public class CLI {
         Plugins.loadAll(new PluginContextImpl(commands, hooks, ctx));
 
         // Populate command trie for autocomplete
-        if (tuiState != null) {
+        if (ctrl != null) {
             for (var cmd : commands.all()) {
-                tuiState.commandTrie().insert(cmd.name(), cmd.description());
+                ctrl.commandTrie().insert(cmd.name(), cmd.description());
             }
         }
 
