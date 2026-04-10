@@ -58,10 +58,9 @@ public final class TuiRenderer implements Renderer {
         if ("agent".equals(name)) return; // agent shown via renderAgentStatus
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
-            // Always add to output log (indented when inside agent)
-            state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING));
-            // Also feed info panel when agent active
-            if (state.activeAgentName() != null) {
+            boolean inAgent = state.activeAgentName() != null;
+            state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING, inAgent));
+            if (inAgent) {
                 state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
             }
         });

@@ -48,38 +48,24 @@ public sealed interface OutputLine {
 
     // ---- Tools ----
 
-    /** Tool call — green ● when done, cyan ● when running. */
-    record ToolCall(String name, String args, ToolCallStatus status) implements OutputLine {
-        public StyledElement<?> render() {
-            return switch (status) {
-                case RUNNING -> row(
-                    spacer(1),
-                    text("● ").cyan().fit(),
-                    text(name).bold().fit(),
-                    text("(" + truncate(args, 80) + ")").dim().fit()
-                );
-                case COMPLETED -> row(
-                    spacer(1),
-                    text("● ").green().fit(),
-                    text(name).bold().fit(),
-                    text("(" + truncate(args, 80) + ")").dim().fit()
-                );
-                case FAILED -> row(
-                    spacer(1),
-                    text("✗ ").red().fit(),
-                    text(name).bold().fit(),
-                    text("(" + truncate(args, 80) + ")").dim().fit()
-                );
-                case PENDING -> row(
-                    spacer(1),
-                    text("○ ").dim().fit(),
-                    text(name).bold().fit(),
-                    text("(" + truncate(args, 80) + ")").dim().fit()
-                );
-            };
+    /** Tool call — green ● when done, cyan ● when running. indented=true for sub-agent tools. */
+    record ToolCall(String name, String args, ToolCallStatus status, boolean indented) implements OutputLine {
+        public ToolCall(String name, String args, ToolCallStatus status) {
+            this(name, args, status, false);
         }
 
-        public ToolCall withStatus(ToolCallStatus s) { return new ToolCall(name, args, s); }
+        public StyledElement<?> render() {
+            int indent = indented ? 4 : 1;
+            var icon = switch (status) {
+                case RUNNING -> text("● ").cyan().fit();
+                case COMPLETED -> text("● ").green().fit();
+                case FAILED -> text("✗ ").red().fit();
+                case PENDING -> text("○ ").dim().fit();
+            };
+            return row(spacer(indent), icon, text(name).bold().fit(), text("(" + truncate(args, 80) + ")").dim().fit());
+        }
+
+        public ToolCall withStatus(ToolCallStatus s) { return new ToolCall(name, args, s, indented); }
     }
 
     /** Tool result line with ⎿ prefix. */
