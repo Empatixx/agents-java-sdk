@@ -174,16 +174,26 @@ public final class CliState {
     public String activeAgentName() { return activeAgentName; }
     public List<String> agentToolCalls() { return agentToolCalls; }
 
-    /** Keep max N ToolCall groups (ToolCall + following CollapseHint) in output. Removes oldest. */
-    public void trimToolLines(int maxGroups) {
+    /**
+     * When more than maxVisible ToolCall lines exist, remove the oldest ones
+     * (+ their CollapseHints) and replace with a single "(N more tool uses, ctrl+o)" hint.
+     * Ctrl+O can restore them.
+     */
+    public void collapseOldToolLines(int maxVisible) {
+        // Count visible ToolCall lines
         int count = 0;
         for (OutputLine line : outputLines) {
             if (line instanceof OutputLine.ToolCall) count++;
         }
-        while (count > maxGroups) {
+        if (count < maxVisible) return;
+
+        // Remove oldest ToolCall groups until we have maxVisible-1 (room for new one)
+        int removed = 0;
+        while (count >= maxVisible) {
             for (int i = 0; i < outputLines.size(); i++) {
                 if (outputLines.get(i) instanceof OutputLine.ToolCall) {
                     outputLines.remove(i);
+                    removed++;
                     // Remove following CollapseHint too
                     if (i < outputLines.size() && outputLines.get(i) instanceof OutputLine.CollapseHint) {
                         outputLines.remove(i);
@@ -193,6 +203,30 @@ public final class CliState {
                 }
             }
         }
+
+        // Update or insert collapsed tools hint
+        boolean updated = false;
+        for (int i = 0; i < outputLines.size(); i++) {
+            if (outputLines.get(i) instanceof OutputLine.Dim d && d.content().contains("tool uses")) {
+                outputLines.set(i, new OutputLine.Dim("(" + (removed + extractCount(d.content())) + " more tool uses, ctrl+o to expand)"));
+                updated = true;
+                break;
+            }
+        }
+        if (!updated && removed > 0) {
+            // Find position before first remaining ToolCall
+            int pos = 0;
+            for (int i = 0; i < outputLines.size(); i++) {
+                if (outputLines.get(i) instanceof OutputLine.ToolCall) { pos = i; break; }
+            }
+            outputLines.add(pos, new OutputLine.Dim("(" + removed + " more tool uses, ctrl+o to expand)"));
+        }
+    }
+
+    private int extractCount(String s) {
+        try {
+            return Integer.parseInt(s.replaceAll("[^0-9]", "").substring(0, s.replaceAll("[^0-9]", "").length()));
+        } catch (Exception e) { return 0; }
     }
 
     // ---- Command trie ----

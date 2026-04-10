@@ -54,17 +54,19 @@ public final class TuiRenderer implements Renderer {
         onRenderThread(() -> state.setSpinner(false, null));
     }
 
+    private static final int MAX_VISIBLE_TOOLS = 2;
+
     @Override
     public void printToolCall(String name, Map<String, Object> args) {
         if ("agent".equals(name)) return;
         String inlineArgs = formatArgs(args);
         onRenderThread(() -> {
             boolean inAgent = state.activeAgentName() != null;
-            // Keep max 5 tool call groups visible in output log
-            state.trimToolLines(5);
             if (inAgent) {
                 state.pushAgentToolCall("● " + name + "(" + inlineArgs + ")");
             }
+            // Collapse old tool calls beyond MAX_VISIBLE_TOOLS into a hint
+            state.collapseOldToolLines(MAX_VISIBLE_TOOLS);
             state.addLine(new OutputLine.ToolCall(name, inlineArgs, ToolCallStatus.RUNNING, inAgent));
         });
     }
