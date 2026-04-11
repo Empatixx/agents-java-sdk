@@ -118,8 +118,22 @@ public class AgentSpawner {
         String systemPrompt = ctx.systemPrompt() + "\n\n" + AGENT_BASE_PROMPT
             + "\nWorking directory: " + ctx.workingDirectory().toAbsolutePath();
 
-        // History: full main worker history as prefix, then agent's task as last user message
-        List<InputItem> history = new ArrayList<>(ctx.history());
+        // History: main worker's user/assistant messages as context (skip tool calls/results — they'd break API pairing)
+        List<InputItem> history = new ArrayList<>();
+        for (var item : ctx.history()) {
+            switch (item) {
+                case InputItem.UserMessage m -> history.add(m);
+                case InputItem.AssistantMessage m -> {
+                    // Keep text content, strip tool calls
+                    if (m.content() != null && !m.content().isBlank()) {
+                        history.add(new InputItem.AssistantMessage(m.content()));
+                    }
+                }
+                case InputItem.SystemMessage m -> history.add(m);
+                case InputItem.CompactionMarker m -> history.add(new InputItem.SystemMessage(m.summary()));
+                default -> {} // skip ToolResult, ImageContent — would break API pairing
+            }
+        }
         history.add(new InputItem.UserMessage(prompt));
         StringBuilder response = new StringBuilder();
 

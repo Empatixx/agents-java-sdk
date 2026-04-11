@@ -156,31 +156,53 @@ public class Repl {
     }
 
     private final cz.krokviak.agents.cli.paste.PasteHandler pasteHandler = new cz.krokviak.agents.cli.paste.PasteHandler();
-    private final cz.krokviak.agents.cli.paste.ImageHandler imageHandler =
-        new cz.krokviak.agents.cli.paste.ImageHandler("default");
+    private cz.krokviak.agents.cli.paste.ImageHandler imageHandler;
+
+    private cz.krokviak.agents.cli.paste.ImageHandler getImageHandler() {
+        if (imageHandler == null) {
+            imageHandler = new cz.krokviak.agents.cli.paste.ImageHandler(
+                ctx.sessionId() != null ? ctx.sessionId() : "default");
+        }
+        return imageHandler;
+    }
 
     private String handlePasteAndImages(String input) {
-        // Check if input is an image path
-        if (imageHandler.isImagePath(input)) {
+        var imgHandler = getImageHandler();
+
+        // 1. Check if input is an image file path
+        if (imgHandler.isImagePath(input)) {
             try {
-                var img = imageHandler.processImagePath(input);
+                var img = imgHandler.processImagePath(input);
                 ctx.history().add(img);
-                ctx.output().println("  Image loaded: " + img.filePath());
+                ctx.output().println("  Image loaded: " + img.description());
                 return "I've attached an image. " + (img.description() != null ? img.description() : "Please analyze it.");
             } catch (Exception e) {
-                log.warn("Failed to process image", e);
+                log.warn("Failed to process image path", e);
             }
         }
 
-        // Check for large paste
+        // 2. Check clipboard for image (when user types short trigger like "img" or pastes nothing useful)
+        if (input.length() <= 5 && (input.equalsIgnoreCase("img") || input.equalsIgnoreCase("paste") || input.equalsIgnoreCase("image"))) {
+            try {
+                var clipImg = imgHandler.tryClipboardImage();
+                if (clipImg != null) {
+                    ctx.history().add(clipImg);
+                    ctx.output().println("  Image from clipboard loaded");
+                    return "I've attached an image from clipboard. Please analyze it.";
+                }
+            } catch (Exception e) {
+                log.debug("No clipboard image", e);
+            }
+        }
+
+        // 3. Large paste detection
         if (pasteHandler.isPaste(input)) {
             var result = pasteHandler.savePaste(input);
             if (result != null) {
-                // Add full content to history as system message so model sees it
                 ctx.history().add(new cz.krokviak.agents.runner.InputItem.SystemMessage(
                     "<pasted-content path=\"" + result.filePath().toAbsolutePath() + "\">\n"
                     + result.content() + "\n</pasted-content>"));
-                ctx.output().println("  Pasted " + result.lineCount() + " lines → " + result.filePath().getFileName());
+                ctx.output().println("  Pasted " + result.lineCount() + " lines saved");
                 return result.reference();
             }
         }
