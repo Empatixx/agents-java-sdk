@@ -52,14 +52,14 @@ public class EnterWorktreeTool implements ExecutableTool {
         }
 
         Path repoRoot = ctx.workingDirectory();
-        // Check we're in a git repo
-        if (!Files.isDirectory(repoRoot.resolve(".git"))) {
-            return ToolOutput.text("Error: not in a git repository");
-        }
-
         // Already in a worktree?
         if (ctx.getProperty("worktree_original_cwd") != null) {
             return ToolOutput.text("Error: already in a worktree. Use exit_worktree first.");
+        }
+
+        // Check we're in a git repo (.git can be a file in worktrees)
+        if (!Files.exists(repoRoot.resolve(".git"))) {
+            return ToolOutput.text("Error: not in a git repository");
         }
 
         // Worktree path: ../<repo-name>-worktrees/<branch-slug>
