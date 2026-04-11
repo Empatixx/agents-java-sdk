@@ -108,6 +108,7 @@ public final class EncryptedSession implements Session {
 
     private String serializeRunItem(RunItem item) {
         return switch (item) {
+            case RunItem.UserInput msg -> "UserInput|" + msg.content();
             case RunItem.MessageOutput msg -> "MessageOutput|" + msg.agentName() + "|" + msg.content();
             case RunItem.ToolCallItem call -> "ToolCallItem|" + call.agentName() + "|" + call.toolCallId()
                 + "|" + call.toolName() + "|" + call.arguments();
@@ -118,13 +119,35 @@ public final class EncryptedSession implements Session {
     }
 
     private InputItem deserializeInputItem(String plaintext) {
+        if (plaintext.startsWith("UserInput|")) {
+            String content = plaintext.substring("UserInput|".length());
+            return new InputItem.UserMessage(content);
+        }
         if (plaintext.startsWith("MessageOutput|")) {
             String[] parts = plaintext.split("\\|", 3);
             String content = parts.length >= 3 ? parts[2] : "";
             return new InputItem.AssistantMessage(content);
         }
-        // For other types, return as assistant message with type indicator
-        return new InputItem.AssistantMessage(plaintext);
+        if (plaintext.startsWith("ToolCallItem|")) {
+            String[] parts = plaintext.split("\\|", 5);
+            String toolCallId = parts.length >= 3 ? parts[2] : "";
+            String toolName = parts.length >= 4 ? parts[3] : "";
+            return new InputItem.AssistantMessage("",
+                java.util.List.of(new InputItem.ToolCall(toolCallId, toolName, java.util.Map.of())));
+        }
+        if (plaintext.startsWith("ToolOutputItem|")) {
+            String[] parts = plaintext.split("\\|", 5);
+            String toolCallId = parts.length >= 3 ? parts[2] : "";
+            String toolName = parts.length >= 4 ? parts[3] : "";
+            return new InputItem.ToolResult(toolCallId, toolName, "");
+        }
+        if (plaintext.startsWith("HandoffItem|")) {
+            String[] parts = plaintext.split("\\|", 3);
+            String from = parts.length >= 2 ? parts[1] : "?";
+            String to = parts.length >= 3 ? parts[2] : "?";
+            return new InputItem.SystemMessage("[Handoff: " + from + " → " + to + "]");
+        }
+        return new InputItem.SystemMessage(plaintext);
     }
 
     private String encrypt(String plaintext) {

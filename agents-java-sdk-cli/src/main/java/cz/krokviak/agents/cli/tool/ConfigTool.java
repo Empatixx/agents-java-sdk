@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class ConfigTool implements ExecutableTool {
-    private static final Path CONFIG_PATH = Path.of(System.getProperty("user.home"), ".claude-cli", "config.properties");
+    private static final Path CONFIG_PATH = Path.of(System.getProperty("user.home"), ".krok", "config.properties");
     private static final Set<String> KNOWN_KEYS = Set.of(
         "theme", "model", "permission_mode", "max_turns", "editor_mode"
     );
@@ -85,7 +85,7 @@ public class ConfigTool implements ExecutableTool {
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (var writer = Files.newBufferedWriter(CONFIG_PATH)) {
-                props.store(writer, "Claude CLI configuration");
+                props.store(writer, "Krok AI configuration");
             }
             return null;
         } catch (IOException e) {

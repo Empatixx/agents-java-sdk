@@ -68,6 +68,7 @@ public final class CliController {
 
     private final StringBuilder streamBuf = new StringBuilder();
     private boolean firstResponseLine = true;
+    private boolean inCodeBlock = false;
 
     public void appendStreaming(String delta) { streamBuf.append(delta); }
 
@@ -76,7 +77,14 @@ public final class CliController {
         int nl = content.lastIndexOf('\n');
         if (nl < 0) return;
         for (String line : content.substring(0, nl).split("\n", -1)) {
-            addLine(firstResponseLine ? new OutputLine.TextStart(line) : new OutputLine.Text(line));
+            if (line.startsWith("```")) {
+                inCodeBlock = !inCodeBlock;
+                addLine(new OutputLine.Dim(line));
+            } else if (inCodeBlock) {
+                addLine(new OutputLine.CodeLine(line));
+            } else {
+                addLine(firstResponseLine ? new OutputLine.TextStart(line) : new OutputLine.Text(line));
+            }
             firstResponseLine = false;
         }
         streamBuf.setLength(0);
@@ -90,7 +98,7 @@ public final class CliController {
         }
     }
 
-    public void resetResponseState() { firstResponseLine = true; }
+    public void resetResponseState() { firstResponseLine = true; inCodeBlock = false; }
 
     // ========================= Spinner =========================
 
@@ -143,11 +151,63 @@ public final class CliController {
 
     public void setPermissionPrompt(String header, String[] options) {
         this.permHeader = header; this.permOptions = options;
+        this.multiQuestions = null; // clear multi-question if single prompt
     }
-    public void clearPermissionPrompt() { this.permHeader = null; this.permOptions = null; }
-    public boolean hasPermissionPrompt() { return permOptions != null; }
+    public void clearPermissionPrompt() {
+        this.permHeader = null; this.permOptions = null;
+        this.multiQuestions = null; this.activeQuestionIdx = 0;
+    }
+    public boolean hasPermissionPrompt() { return permOptions != null || multiQuestions != null; }
     public String permissionHeader() { return permHeader; }
     public String[] permissionOptions() { return permOptions; }
+
+    // ========================= Multi-question prompt =========================
+
+    public record QuestionCard(String header, String text, String[] options) {}
+
+    private List<QuestionCard> multiQuestions;
+    private int activeQuestionIdx;
+    private int[] selectedOptions; // per-question selected option index
+    private String[] confirmedAnswers; // null = not yet answered
+
+    public void setMultiQuestions(List<QuestionCard> questions) {
+        this.multiQuestions = questions;
+        this.activeQuestionIdx = 0;
+        this.selectedOptions = new int[questions.size()];
+        this.confirmedAnswers = new String[questions.size()];
+        this.permHeader = null;
+        this.permOptions = null;
+    }
+
+    public boolean hasMultiQuestions() { return multiQuestions != null && !multiQuestions.isEmpty(); }
+    public List<QuestionCard> multiQuestions() { return multiQuestions; }
+    public int activeQuestionIdx() { return activeQuestionIdx; }
+    public int selectedOptionForActive() { return selectedOptions != null ? selectedOptions[activeQuestionIdx] : 0; }
+    public String[] confirmedAnswers() { return confirmedAnswers; }
+
+    public void navigateQuestion(int delta) {
+        if (multiQuestions == null) return;
+        activeQuestionIdx = Math.max(0, Math.min(multiQuestions.size() - 1, activeQuestionIdx + delta));
+    }
+
+    public void navigateOption(int delta) {
+        if (multiQuestions == null) return;
+        QuestionCard q = multiQuestions.get(activeQuestionIdx);
+        int cur = selectedOptions[activeQuestionIdx];
+        selectedOptions[activeQuestionIdx] = Math.max(0, Math.min(q.options().length - 1, cur + delta));
+    }
+
+    public void confirmCurrentQuestion() {
+        if (multiQuestions == null) return;
+        QuestionCard q = multiQuestions.get(activeQuestionIdx);
+        confirmedAnswers[activeQuestionIdx] = q.options()[selectedOptions[activeQuestionIdx]];
+    }
+
+    public boolean allQuestionsAnswered() {
+        if (confirmedAnswers == null) return false;
+        for (String a : confirmedAnswers) { if (a == null) return false; }
+        return true;
+    }
 
     // ========================= Agents (multiple) =========================
 

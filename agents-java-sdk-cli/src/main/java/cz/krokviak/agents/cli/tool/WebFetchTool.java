@@ -42,7 +42,7 @@ public class WebFetchTool implements ExecutableTool {
             var requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
-                .header("User-Agent", "Claude-Code-CLI/1.0")
+                .header("User-Agent", "KrokAI/1.0")
                 .GET();
 
             @SuppressWarnings("unchecked")

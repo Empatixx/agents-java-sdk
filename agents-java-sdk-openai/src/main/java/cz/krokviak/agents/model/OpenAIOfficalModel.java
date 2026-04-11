@@ -86,6 +86,11 @@ public class OpenAIOfficalModel implements Model {
                         .role(EasyInputMessage.Role.SYSTEM)
                         .content(EasyInputMessage.Content.ofTextInput(msg.content()))
                         .build()));
+                case InputItem.CompactionMarker marker -> input.add(ResponseInputItem.ofEasyInputMessage(
+                    EasyInputMessage.builder()
+                        .role(EasyInputMessage.Role.SYSTEM)
+                        .content(EasyInputMessage.Content.ofTextInput("[Conversation Summary]\n" + marker.summary()))
+                        .build()));
             }
         }
         if (!input.isEmpty()) {

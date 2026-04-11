@@ -26,14 +26,14 @@ import java.util.concurrent.*;
  */
 public class StreamingToolExecutor {
 
-    private static final int TOOL_EXECUTION_TIMEOUT_SECONDS = 120;
+    private static final int TOOL_EXECUTION_TIMEOUT_SECONDS = cz.krokviak.agents.cli.CliDefaults.TOOL_EXECUTION_TIMEOUT_SECONDS;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ToolDispatcher toolDispatcher;
     private final CliContext ctx;
-    /** Insertion-ordered so iteration is always in receipt order. */
-    private final Map<String, String> toolCallNames = new LinkedHashMap<>();
-    private final Map<String, StringBuilder> toolCallArgs = new LinkedHashMap<>();
+    /** Insertion-ordered and thread-safe for concurrent streaming + collection. */
+    private final Map<String, String> toolCallNames = java.util.Collections.synchronizedMap(new LinkedHashMap<>());
+    private final Map<String, StringBuilder> toolCallArgs = java.util.Collections.synchronizedMap(new LinkedHashMap<>());
     private final Set<String> completedToolCalls = ConcurrentHashMap.newKeySet();
     /** Futures for concurrent-safe (read-only) tool calls, keyed by tool-call id. */
     private final Map<String, CompletableFuture<ToolResult>> pendingResults = new ConcurrentHashMap<>();

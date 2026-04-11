@@ -34,7 +34,7 @@ public class PowerShellTool implements ExecutableTool {
     @Override
     public ToolOutput execute(ToolArgs args, ToolContext<?> ctx) throws Exception {
         String command = args.get("command", String.class);
-        int timeout = getInt(args, "timeout", 120_000);
+        int timeout = getInt(args, "timeout", cz.krokviak.agents.cli.CliDefaults.BASH_TIMEOUT_MS);
         if (command == null || command.isBlank()) return ToolOutput.text("Error: command required");
 
         String shell = detectPowerShellBinary();

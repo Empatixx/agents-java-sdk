@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 public class BashTool implements ExecutableTool {
 
-    private static final int MAX_OUTPUT_CHARS = 2000;
+    private static final int MAX_OUTPUT_CHARS = cz.krokviak.agents.cli.CliDefaults.BASH_MAX_OUTPUT_CHARS;
 
     private final Path workingDirectory;
     private final ToolDefinition toolDefinition;
@@ -42,7 +42,7 @@ public class BashTool implements ExecutableTool {
     @Override
     public ToolOutput execute(ToolArgs args, ToolContext<?> ctx) throws Exception {
         String command = args.get("command", String.class);
-        int timeout = getInt(args, "timeout", 120_000);
+        int timeout = getInt(args, "timeout", cz.krokviak.agents.cli.CliDefaults.BASH_TIMEOUT_MS);
         int offsetLines = getInt(args, "offset_lines", 0);
         int limitLines = getInt(args, "limit_lines", -1);
 

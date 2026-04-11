@@ -108,7 +108,7 @@ public class AgentSpawner {
                            Model model, ProgressTracker progress, RunningAgent agent, int maxTurns) {
         // Tag this thread so TuiRenderer knows which agent's tools to group
         cz.krokviak.agents.cli.render.tui.TuiRenderer.CURRENT_AGENT.set(agentId);
-
+        try {
         List<ToolDefinition> defs = tools.stream()
             .filter(t -> !t.name().equals("agent"))
             .map(ExecutableTool::definition)
@@ -168,8 +168,10 @@ public class AgentSpawner {
             }
         }
 
-        cz.krokviak.agents.cli.render.tui.TuiRenderer.CURRENT_AGENT.remove();
         return response.isEmpty() ? "(no response)" : response.toString();
+        } finally {
+            cz.krokviak.agents.cli.render.tui.TuiRenderer.CURRENT_AGENT.remove();
+        }
     }
 
     private void injectMailbox(List<InputItem> history, String agentId) {

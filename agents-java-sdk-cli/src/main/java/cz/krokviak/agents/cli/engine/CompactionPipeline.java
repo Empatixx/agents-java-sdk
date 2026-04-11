@@ -12,9 +12,13 @@ public class CompactionPipeline {
     private final int layer1Threshold;
     private final int layer2Threshold;
     private final int layer3Threshold;
+    private volatile TokenEstimator calibratedEstimator;
 
     public CompactionPipeline(ContextCompactor autoCompactor) {
-        this(new SnipCompactor(), new MicroCompactor(), autoCompactor, 40_000, 60_000, 80_000);
+        this(new SnipCompactor(), new MicroCompactor(), autoCompactor,
+            cz.krokviak.agents.cli.CliDefaults.COMPACTION_LAYER1_THRESHOLD,
+            cz.krokviak.agents.cli.CliDefaults.COMPACTION_LAYER2_THRESHOLD,
+            cz.krokviak.agents.cli.CliDefaults.COMPACTION_LAYER3_THRESHOLD);
     }
 
     public CompactionPipeline(SnipCompactor snip, MicroCompactor micro, ContextCompactor auto,
@@ -23,12 +27,24 @@ public class CompactionPipeline {
         this.layer1Threshold = l1; this.layer2Threshold = l2; this.layer3Threshold = l3;
     }
 
+    public void setCalibratedEstimator(TokenEstimator estimator) {
+        this.calibratedEstimator = estimator;
+    }
+
+    private int estimateTokens(List<InputItem> history, String systemPrompt) {
+        if (calibratedEstimator != null) {
+            return calibratedEstimator.estimateCalibrated(history)
+                + calibratedEstimator.estimateCalibrated(systemPrompt);
+        }
+        return TokenEstimator.estimate(history) + TokenEstimator.estimate(systemPrompt);
+    }
+
     public List<InputItem> compact(List<InputItem> history, String systemPrompt) {
-        int tokens = TokenEstimator.estimate(history) + TokenEstimator.estimate(systemPrompt);
+        int tokens = estimateTokens(history, systemPrompt);
         if (tokens > layer1Threshold) { history = snipCompactor.snipIfNeeded(history);
-            tokens = TokenEstimator.estimate(history) + TokenEstimator.estimate(systemPrompt); }
+            tokens = estimateTokens(history, systemPrompt); }
         if (tokens > layer2Threshold) { history = microCompactor.compact(history);
-            tokens = TokenEstimator.estimate(history) + TokenEstimator.estimate(systemPrompt); }
+            tokens = estimateTokens(history, systemPrompt); }
         if (tokens > layer3Threshold && autoCompactor != null) history = autoCompactor.compactIfNeeded(history, systemPrompt);
         return history;
     }

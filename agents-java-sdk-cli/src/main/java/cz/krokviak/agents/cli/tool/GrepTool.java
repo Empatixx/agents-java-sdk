@@ -61,7 +61,7 @@ public class GrepTool implements ExecutableTool {
             : null;
 
         List<String> matches = new ArrayList<>();
-        int limit = 500;
+        int limit = cz.krokviak.agents.cli.CliDefaults.GREP_RESULT_LIMIT;
 
         if (Files.isRegularFile(searchRoot)) {
             searchFile(searchRoot, regex, matches, limit);

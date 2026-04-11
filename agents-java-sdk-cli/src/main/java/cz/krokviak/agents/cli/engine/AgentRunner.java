@@ -3,6 +3,7 @@ package cz.krokviak.agents.cli.engine;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.exception.ContextTooLongException;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.runner.RunItem;
@@ -20,14 +21,16 @@ public class AgentRunner {
         this.ctx = ctx;
         this.toolDispatcher = toolDispatcher;
         this.maxTurns = maxTurns;
-        this.tokenBudget = new TokenBudget(200_000);
+        this.tokenBudget = new TokenBudget(cz.krokviak.agents.cli.CliDefaults.TOKEN_BUDGET);
     }
 
     public void run(String userInput) {
         ctx.history().add(new InputItem.UserMessage(userInput));
         List<RunItem> newItems = new ArrayList<>();
+        newItems.add(new RunItem.UserInput(userInput));
 
         try {
+            boolean retried = false;
             for (int turn = 0; turn < maxTurns; turn++) {
                 // Inject pending task notifications
                 injectTaskNotifications();
@@ -44,7 +47,7 @@ public class AgentRunner {
                 String systemPrompt = ctx.systemPrompt();
                 if (ctx.isPlanMode() && ctx.planStore() != null) {
                     String planPath = ctx.planStore().currentPlanPath();
-                    if (planPath == null) planPath = "~/.claude/plans/<plan>.md";
+                    if (planPath == null) planPath = "~/.krok/plans/<plan>.md";
                     systemPrompt += "\n\n" + cz.krokviak.agents.cli.plan.PlanPrompts.planModeInstructions(planPath);
                 }
 
@@ -79,7 +82,22 @@ public class AgentRunner {
                             }
                         }
                     }
+                } catch (ContextTooLongException e) {
+                    if (firstEvent) ctx.output().stopSpinner();
+                    streamingExecutor.shutdown();
+                    if (retried) {
+                        ctx.output().printError("Context still too large after compaction. Try /compact manually.");
+                        break;
+                    }
+                    retried = true;
+                    ctx.output().println("\033[2m[Context too large — compacting and retrying]\033[0m");
+                    var reactiveCompacted = ctx.compactionPipeline().reactiveCompact(ctx.history(), ctx.systemPrompt());
+                    ctx.history().clear();
+                    ctx.history().addAll(reactiveCompacted);
+                    turn--; // retry this turn
+                    continue;
                 }
+                retried = false;
                 if (firstEvent) ctx.output().stopSpinner();
                 if (collector.text() != null) System.out.println();
 
@@ -88,6 +106,8 @@ public class AgentRunner {
                 if (resp != null && resp.usage() != null) {
                     ctx.costTracker().record(ctx.modelId(), resp.usage().inputTokens(), resp.usage().outputTokens());
                     tokenBudget.recordTurn(resp.usage().inputTokens(), resp.usage().outputTokens());
+                    int charCount = cz.krokviak.agents.cli.context.TokenEstimator.countChars(ctx.history());
+                    ctx.tokenEstimator().calibrate(resp.usage().inputTokens(), charCount);
                 }
 
                 // Update history
@@ -107,10 +127,9 @@ public class AgentRunner {
                 streamingExecutor.collectResults(toolCalls, newItems);
                 streamingExecutor.shutdown();
 
-                // Token budget check
+                // Token budget check — ask user to extend
                 if (tokenBudget.isOverBudget()) {
-                    ctx.output().printError("Token budget exceeded " + tokenBudget.format());
-                    break;
+                    if (!promptExtendBudget()) break;
                 }
                 if (tokenBudget.isDiminishingReturns()) {
                     ctx.output().println("\033[2m[Diminishing returns detected — stopping]\033[0m");
@@ -157,8 +176,61 @@ public class AgentRunner {
 
     private void saveSession(List<RunItem> newItems) {
         if (ctx.session() != null && ctx.sessionId() != null && !newItems.isEmpty()) {
-            try { ctx.session().save(ctx.sessionId(), newItems); }
-            catch (Exception e) { ctx.output().printError("Failed to save session: " + e.getMessage()); }
+            try {
+                ctx.session().save(ctx.sessionId(), newItems);
+                updateSessionMetadata();
+            } catch (Exception e) {
+                ctx.output().printError("Failed to save session: " + e.getMessage());
+            }
+        }
+    }
+
+    private boolean promptExtendBudget() {
+        int newBudget = tokenBudget.maxBudget() * 2;
+        String header = String.format("Token budget exceeded %s. Increase to %,d?", tokenBudget.format(), newBudget);
+        String[] options = {"Yes, increase 2x", "No, stop"};
+
+        var renderer = ctx.tuiRenderer();
+        int selected;
+        if (renderer != null) {
+            selected = renderer.promptPermission(header, options);
+        } else {
+            ctx.output().println(header);
+            ctx.output().println("  1. " + options[0]);
+            ctx.output().println("  2. " + options[1]);
+            try {
+                int c = System.in.read();
+                while (System.in.available() > 0) System.in.read();
+                selected = (c == '1' || c == 'y') ? 0 : 1;
+            } catch (Exception e) { selected = 1; }
+        }
+
+        if (selected == 0) {
+            tokenBudget.extend(2);
+            ctx.output().println("Budget increased to " + String.format("%,d", tokenBudget.maxBudget()) + " tokens.");
+            return true;
+        }
+        ctx.output().println("Stopping.");
+        return false;
+    }
+
+    private void updateSessionMetadata() {
+        var advanced = ctx.advancedSession();
+        if (advanced == null) return;
+        try {
+            String title = null;
+            for (var item : ctx.history()) {
+                if (item instanceof InputItem.UserMessage msg) {
+                    String content = msg.content();
+                    title = content.length() > 80 ? content.substring(0, 80) + "..." : content;
+                    break;
+                }
+            }
+            advanced.saveMetadata(new cz.krokviak.agents.session.SessionMetadata(
+                ctx.sessionId(), title, java.time.Instant.now(), java.time.Instant.now(),
+                ctx.history().size(), ctx.workingDirectory().toAbsolutePath().toString()));
+        } catch (Exception e) {
+            System.getLogger("AgentRunner").log(System.Logger.Level.WARNING, "Failed to update session metadata", e);
         }
     }
 }

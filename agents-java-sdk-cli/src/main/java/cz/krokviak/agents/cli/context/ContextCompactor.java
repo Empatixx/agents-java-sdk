@@ -1,5 +1,6 @@
 package cz.krokviak.agents.cli.context;
 
+import cz.krokviak.agents.cli.CliDefaults;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.tool.ToolDefinition;
@@ -20,7 +21,7 @@ public class ContextCompactor {
     }
 
     public ContextCompactor(Model model) {
-        this(model, 80_000, 40_000);
+        this(model, CliDefaults.COMPACTION_LAYER3_THRESHOLD, CliDefaults.COMPACTION_TARGET_TOKENS);
     }
 
     public List<InputItem> compactIfNeeded(List<InputItem> history, String systemPrompt) {
@@ -62,9 +63,9 @@ public class ContextCompactor {
             LlmContext ctx = new LlmContext(
                 "You are a conversation summarizer. Output only the summary.",
                 List.of(new InputItem.UserMessage(summaryPrompt)),
-                List.of(), null, ModelSettings.builder().maxTokens(2048).build()
+                List.of(), null, ModelSettings.builder().maxTokens(CliDefaults.COMPACTION_SUMMARY_MAX_TOKENS).build()
             );
-            ModelResponse response = model.call(ctx, ModelSettings.builder().maxTokens(2048).build());
+            ModelResponse response = model.call(ctx, ModelSettings.builder().maxTokens(CliDefaults.COMPACTION_SUMMARY_MAX_TOKENS).build());
 
             String summary = "";
             for (var output : response.output()) {
@@ -75,15 +76,13 @@ public class ContextCompactor {
             }
 
             List<InputItem> compacted = new ArrayList<>();
-            compacted.add(new InputItem.SystemMessage("[Conversation Summary]\n" + summary));
+            compacted.add(new InputItem.CompactionMarker(summary, java.time.Instant.now(), splitIndex));
             compacted.addAll(history.subList(splitIndex, history.size()));
-
-            System.out.println("\033[2m[Compacted: " + splitIndex + " messages summarized, " +
-                tokensAccumulated + " tokens freed]\033[0m");
 
             return compacted;
         } catch (Exception e) {
-            System.out.println("\033[31m[Compaction failed: " + e.getMessage() + "]\033[0m");
+            System.getLogger("ContextCompactor").log(System.Logger.Level.WARNING,
+                "Compaction failed, keeping original history: " + e.getMessage());
             return history;
         }
     }
@@ -102,6 +101,7 @@ public class ContextCompactor {
                 case InputItem.ToolResult m -> sb.append("  [Tool result ").append(m.toolName()).append(": ")
                     .append(truncate(m.output(), 200)).append("]\n");
                 case InputItem.SystemMessage m -> sb.append("System: ").append(m.content()).append("\n");
+                case InputItem.CompactionMarker m -> sb.append("Summary: ").append(m.summary()).append("\n");
             }
         }
         return sb.toString();

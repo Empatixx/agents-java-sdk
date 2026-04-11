@@ -76,7 +76,10 @@ public class PermissionManager {
                 int c = System.in.read();
                 while (System.in.available() > 0) System.in.read();
                 selected = switch (c) { case '1', 'y' -> 0; case '2', 'a' -> 1; default -> 2; };
-            } catch (Exception e) { selected = 2; }
+            } catch (Exception e) {
+                System.getLogger("PermissionManager").log(System.Logger.Level.WARNING, "Failed to read permission input, defaulting to deny", e);
+                selected = 2;
+            }
         }
 
         return switch (selected) {

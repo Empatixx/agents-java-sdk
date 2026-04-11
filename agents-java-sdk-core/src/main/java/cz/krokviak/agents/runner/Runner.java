@@ -78,6 +78,7 @@ public final class Runner {
                 // Emit items as events
                 for (RunItem item : result.newItems()) {
                     switch (item) {
+                        case RunItem.UserInput _ -> {} // user input not emitted as stream event
                         case RunItem.MessageOutput msg ->
                             queue.put(new StreamEvent.TextDeltaEvent<>(msg.content()));
                         case RunItem.ToolCallItem call ->

@@ -31,11 +31,15 @@ public class AgentTool implements ExecutableTool {
         this.agentRegistry = agentRegistry;
         this.spawner = new AgentSpawner(ctx, agentRegistry, taskManager);
         this.toolDefinition = new ToolDefinition("agent",
-            "Spawn a sub-agent to handle a task. Use run_in_background=true for long-running tasks.",
+            "Launch a sub-agent to handle a task. By default runs in FOREGROUND (blocking) — " +
+                "the agent executes and its result is returned directly to you. " +
+                "Use this when you need the agent's output to continue your work. " +
+                "Only set run_in_background=true for truly independent tasks where you don't need the result immediately.",
             Map.of("type", "object", "properties", Map.of(
                 "prompt", Map.of("type", "string", "description", "The task for the sub-agent"),
                 "description", Map.of("type", "string", "description", "Short 3-5 word description"),
-                "run_in_background", Map.of("type", "boolean", "description", "Run asynchronously (default false)"),
+                "run_in_background", Map.of("type", "boolean", "description",
+                    "If true, run async and get notified when done. Default false (blocking — result returned directly)."),
                 "name", Map.of("type", "string", "description", "Optional agent name for addressing later"),
                 "model", Map.of("type", "string", "description", "Model override"),
                 "max_turns", Map.of("type", "integer", "description", "Max conversation turns (default 15, max 100)")

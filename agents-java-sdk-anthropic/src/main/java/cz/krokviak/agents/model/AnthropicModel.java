@@ -1,6 +1,7 @@
 package cz.krokviak.agents.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cz.krokviak.agents.exception.ContextTooLongException;
 import cz.krokviak.agents.http.SseParser;
 import cz.krokviak.agents.model.dto.AnthropicDto;
 import cz.krokviak.agents.runner.InputItem;
@@ -33,6 +34,9 @@ public class AnthropicModel implements Model {
                 "/v1/messages", body, AnthropicDto.Response.class);
             return parseResponse(response);
         } catch (Exception e) {
+            if (isPromptTooLong(e)) {
+                throw new ContextTooLongException("Prompt is too long for the model context window", e);
+            }
             throw new RuntimeException("Anthropic Messages API call failed", e);
         }
     }
@@ -79,6 +83,10 @@ public class AnthropicModel implements Model {
 
         for (InputItem item : items) {
             switch (item) {
+                case InputItem.CompactionMarker marker -> {
+                    if (!systemPrompt.isEmpty()) systemPrompt.append("\n");
+                    systemPrompt.append("[Conversation Summary]\n").append(marker.summary());
+                }
                 case InputItem.SystemMessage msg -> {
                     if (!systemPrompt.isEmpty()) systemPrompt.append("\n");
                     systemPrompt.append(msg.content());
@@ -150,5 +158,17 @@ public class AnthropicModel implements Model {
         }
 
         return new ModelResponse(id, outputs, new Usage(inputTokens, outputTokens));
+    }
+
+    private static boolean isPromptTooLong(Throwable e) {
+        String msg = e.getMessage();
+        if (msg != null) {
+            String lower = msg.toLowerCase();
+            if (lower.contains("prompt is too long") || lower.contains("prompt_too_long")
+                || lower.contains("context length exceeded") || lower.contains("max tokens")) {
+                return true;
+            }
+        }
+        return e.getCause() != null && isPromptTooLong(e.getCause());
     }
 }

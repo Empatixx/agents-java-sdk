@@ -1,6 +1,7 @@
 package cz.krokviak.agents.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cz.krokviak.agents.exception.ContextTooLongException;
 import cz.krokviak.agents.http.SseParser;
 import cz.krokviak.agents.model.dto.AnthropicDto;
 
@@ -110,7 +111,14 @@ final class AnthropicResponseStream implements ModelResponseStream {
                             done = true;
                             pending.add(new Event.Done(buildFullResponse()));
                         }
-                        default -> {} // ping, error, etc.
+                        case "error" -> {
+                            String lower = data.toLowerCase();
+                            if (lower.contains("prompt is too long") || lower.contains("prompt_too_long")
+                                || lower.contains("context length exceeded")) {
+                                throw new ContextTooLongException("Prompt is too long: " + data);
+                            }
+                        }
+                        default -> {} // ping, etc.
                     }
                 } catch (Exception e) {
                     // skip unparseable events

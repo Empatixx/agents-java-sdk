@@ -1,6 +1,7 @@
 package cz.krokviak.agents.cli;
 
 import cz.krokviak.agents.cli.context.ContextCompactor;
+import cz.krokviak.agents.cli.context.TokenEstimator;
 import cz.krokviak.agents.cli.cost.CostTracker;
 import cz.krokviak.agents.cli.engine.CompactionPipeline;
 import cz.krokviak.agents.cli.mailbox.MailboxManager;
@@ -11,6 +12,7 @@ import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
 import cz.krokviak.agents.model.ModelSettings;
 import cz.krokviak.agents.runner.InputItem;
+import cz.krokviak.agents.session.AdvancedSQLiteSession;
 import cz.krokviak.agents.session.Session;
 
 import java.nio.file.Path;
@@ -38,7 +40,7 @@ public final class CliContext {
     private String sessionId;
     private final List<InputItem> history;
     private volatile boolean planMode;
-    private volatile Runnable planModeListener;
+    private final java.util.concurrent.atomic.AtomicReference<Runnable> planModeListener = new java.util.concurrent.atomic.AtomicReference<>();
 
     public CliContext(Model model, String modelId, String apiKey, String baseUrl,
                      Renderer output, PermissionManager permissions,
@@ -53,12 +55,13 @@ public final class CliContext {
         this.permissions = permissions;
         this.compactor = compactor;
         this.compactionPipeline = new CompactionPipeline(compactor);
+        this.compactionPipeline.setCalibratedEstimator(this.tokenEstimator);
         this.costTracker = new CostTracker();
         this.taskManager = taskManager;
         this.mailboxManager = mailboxManager;
         this.workingDirectory = workingDirectory;
         this.systemPrompt = systemPrompt;
-        this.modelSettings = ModelSettings.builder().maxTokens(16384).build();
+        this.modelSettings = ModelSettings.builder().maxTokens(CliDefaults.MODEL_MAX_TOKENS).build();
         this.session = session;
         this.sessionId = sessionId;
         this.history = Collections.synchronizedList(new ArrayList<>());
@@ -91,9 +94,10 @@ public final class CliContext {
     public boolean isPlanMode() { return planMode; }
     public void setPlanMode(boolean planMode) {
         this.planMode = planMode;
-        if (planModeListener != null) planModeListener.run();
+        Runnable listener = planModeListener.get();
+        if (listener != null) listener.run();
     }
-    public void onPlanModeChange(Runnable listener) { this.planModeListener = listener; }
+    public void onPlanModeChange(Runnable listener) { this.planModeListener.set(listener); }
 
     private cz.krokviak.agents.cli.plan.PlanStore planStore;
     public void setPlanStore(cz.krokviak.agents.cli.plan.PlanStore store) { this.planStore = store; }
@@ -102,4 +106,11 @@ public final class CliContext {
     private cz.krokviak.agents.cli.render.tui.TuiRenderer tuiRenderer;
     public void setTuiRenderer(cz.krokviak.agents.cli.render.tui.TuiRenderer r) { this.tuiRenderer = r; }
     public cz.krokviak.agents.cli.render.tui.TuiRenderer tuiRenderer() { return tuiRenderer; }
+
+    private AdvancedSQLiteSession advancedSession;
+    public void setAdvancedSession(AdvancedSQLiteSession s) { this.advancedSession = s; }
+    public AdvancedSQLiteSession advancedSession() { return advancedSession; }
+
+    private final TokenEstimator tokenEstimator = new TokenEstimator();
+    public TokenEstimator tokenEstimator() { return tokenEstimator; }
 }

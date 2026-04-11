@@ -19,6 +19,7 @@ public record RunResult<T>(
         var result = new ArrayList<>(input);
         for (RunItem item : newItems) {
             result.add(switch (item) {
+                case RunItem.UserInput msg -> new InputItem.UserMessage(msg.content());
                 case RunItem.MessageOutput msg -> new InputItem.AssistantMessage(msg.content());
                 case RunItem.ToolCallItem call -> new InputItem.AssistantMessage("",
                     List.of(new InputItem.ToolCall(call.toolCallId(), call.toolName(), call.arguments())));

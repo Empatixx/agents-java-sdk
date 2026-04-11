@@ -25,6 +25,8 @@ public class InMemorySession implements Session {
 
     private static InputItem toInputItem(RunItem item) {
         return switch (item) {
+            case RunItem.UserInput msg ->
+                new InputItem.UserMessage(msg.content());
             case RunItem.MessageOutput msg ->
                 new InputItem.AssistantMessage(msg.content());
             case RunItem.ToolCallItem call ->

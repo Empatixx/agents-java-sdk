@@ -99,6 +99,7 @@ public class RedisSession implements Session {
         try {
             String type = item.getClass().getSimpleName();
             String content = switch (item) {
+                case RunItem.UserInput msg -> msg.content();
                 case RunItem.MessageOutput msg -> msg.content();
                 case RunItem.ToolCallItem call -> call.toolName() + ": " + objectMapper.writeValueAsString(call.arguments());
                 case RunItem.ToolOutputItem out -> out.toolName();

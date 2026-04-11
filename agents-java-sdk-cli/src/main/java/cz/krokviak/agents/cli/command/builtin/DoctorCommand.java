@@ -35,10 +35,10 @@ public class DoctorCommand implements Command {
         check(ctx, "Session", ctx.sessionId() != null ? ctx.sessionId() : "none",
             true);
 
-        // CLAUDE.md
-        boolean hasClaude = Files.exists(ctx.workingDirectory().resolve("CLAUDE.md")) ||
-            Files.exists(ctx.workingDirectory().resolve(".claude").resolve("CLAUDE.md"));
-        check(ctx, "CLAUDE.md", hasClaude ? "found" : "not found", true);
+        // AGENTS.md
+        boolean hasAgentsMd = Files.exists(ctx.workingDirectory().resolve("AGENTS.md")) ||
+            Files.exists(ctx.workingDirectory().resolve(".krok").resolve("AGENTS.md"));
+        check(ctx, "AGENTS.md", hasAgentsMd ? "found" : "not found", true);
 
         // History size
         check(ctx, "History", ctx.history().size() + " messages", ctx.history().size() < 500);

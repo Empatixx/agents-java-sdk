@@ -14,6 +14,7 @@ public class Repl {
     private final Commands commands;
     private final AgentRunner runner;
     private final CliApp cliApp; // null when piped/non-TTY
+    private volatile boolean runnerActive;
 
     public Repl(CliContext ctx, Commands commands, AgentRunner runner, CliApp cliApp) {
         this.ctx = ctx;
@@ -24,6 +25,7 @@ public class Repl {
 
     public void start() {
         loadSessionHistory();
+        startNotificationWatcher();
 
         if (cliApp != null) {
             Thread.ofVirtual().name("cli-app").start(() -> {
@@ -42,6 +44,37 @@ public class Repl {
         }
     }
 
+    private void startNotificationWatcher() {
+        if (ctx.taskManager() == null) return;
+        Thread.ofVirtual().name("notification-watcher").start(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(500);
+                    if (runnerActive) continue; // runner handles its own notifications
+                    var notifications = ctx.taskManager().drainNotifications();
+                    for (var n : notifications) {
+                        String icon = switch (n.status()) {
+                            case COMPLETED -> "\u2713";
+                            case FAILED -> "\u2717";
+                            case KILLED -> "\u2298";
+                            default -> "\u25cf";
+                        };
+                        ctx.output().println("");
+                        ctx.output().println("  " + icon + " Agent " + n.description() + " " +
+                            n.status().name().toLowerCase());
+                        if (n.summary() != null && !n.summary().isBlank()) {
+                            String summary = n.summary().length() > 150
+                                ? n.summary().substring(0, 150) + "..." : n.summary();
+                            ctx.output().println("    " + summary);
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception ignored) {}
+            }
+        });
+    }
+
     @FunctionalInterface
     private interface InputReader {
         String readLine() throws Exception;
@@ -58,8 +91,14 @@ public class Repl {
                 if (input.startsWith("/")) {
                     dispatchCommand(input);
                 } else {
-                    try { runner.run(input); }
-                    catch (Exception e) { ctx.output().printError(e.getMessage()); }
+                    try {
+                        runnerActive = true;
+                        runner.run(input);
+                    } catch (Exception e) {
+                        ctx.output().printError(e.getMessage());
+                    } finally {
+                        runnerActive = false;
+                    }
                 }
             } catch (Exception e) {
                 ctx.output().printError("Fatal: " + e.getMessage());

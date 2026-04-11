@@ -20,7 +20,17 @@ public final class CliView {
                                  ListElement<?> permissionList,
                                  Runnable onSubmit, KeyEventHandler inputKeys,
                                  java.util.function.IntConsumer onPermissionSelect) {
-        // Permission mode
+        // Multi-question mode (left/right navigable)
+        if (ctrl.hasMultiQuestions()) {
+            return column(
+                OutputLogComponent.render(ctrl),
+                SpinnerBarComponent.render(ctrl),
+                MultiQuestionComponent.render(ctrl, () -> onPermissionSelect.accept(-1)),
+                InfoPanelComponent.render(ctrl, List.of())
+            );
+        }
+
+        // Permission mode (single question)
         if (ctrl.hasPermissionPrompt()) {
             return column(
                 OutputLogComponent.render(ctrl),

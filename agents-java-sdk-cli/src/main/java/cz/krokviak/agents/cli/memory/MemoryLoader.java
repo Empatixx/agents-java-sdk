@@ -15,16 +15,16 @@ public final class MemoryLoader {
         StringBuilder sb = new StringBuilder();
 
         // Global instructions
-        Path globalPath = Path.of(System.getProperty("user.home"), ".claude", "CLAUDE.md");
+        Path globalPath = Path.of(System.getProperty("user.home"), ".krok", "AGENTS.md");
         appendIfExists(sb, globalPath, "## Global Instructions");
 
-        // Project .claude/CLAUDE.md
-        Path projectDotClaudePath = cwd.resolve(".claude").resolve("CLAUDE.md");
-        appendIfExists(sb, projectDotClaudePath, "## Project Instructions (.claude/CLAUDE.md)");
+        // Project .krok/AGENTS.md
+        Path projectDotKrokPath = cwd.resolve(".krok").resolve("AGENTS.md");
+        appendIfExists(sb, projectDotKrokPath, "## Project Instructions (.krok/AGENTS.md)");
 
-        // Project root CLAUDE.md
-        Path projectRootPath = cwd.resolve("CLAUDE.md");
-        appendIfExists(sb, projectRootPath, "## Project Instructions (CLAUDE.md)");
+        // Project root AGENTS.md
+        Path projectRootPath = cwd.resolve("AGENTS.md");
+        appendIfExists(sb, projectRootPath, "## Project Instructions (AGENTS.md)");
 
         // Auto-memory from MemoryStore
         if (memoryStore != null) {

@@ -195,6 +195,25 @@ public final class TuiRenderer implements Renderer {
 
     public boolean hasPermissionPrompt() { return ctrl.hasPermissionPrompt(); }
 
+    /**
+     * Multi-question prompt with left/right navigation between questions.
+     * Returns the confirmed answers as a Map of header → answer.
+     */
+    public java.util.Map<String, String> promptMultiQuestion(java.util.List<CliController.QuestionCard> questions) {
+        ui(() -> ctrl.setMultiQuestions(questions));
+        // Wait for all questions to be answered (signaled by resolvePermission(-1))
+        try { permResult.take(); } catch (InterruptedException ignored) {}
+        // Collect answers
+        var answers = new java.util.LinkedHashMap<String, String>();
+        String[] confirmed = ctrl.confirmedAnswers();
+        for (int i = 0; i < questions.size(); i++) {
+            String tag = questions.get(i).header() != null ? questions.get(i).header() : "Q" + (i + 1);
+            answers.put(tag, confirmed != null && confirmed[i] != null ? confirmed[i] : "(no answer)");
+        }
+        ui(() -> ctrl.clearPermissionPrompt());
+        return answers;
+    }
+
     // ---- Helpers ----
 
     private String fmtArgs(Map<String, Object> args) {

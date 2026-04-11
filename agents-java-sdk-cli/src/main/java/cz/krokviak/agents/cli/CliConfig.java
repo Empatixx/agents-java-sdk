@@ -22,7 +22,7 @@ public record CliConfig(
         String sessionId = null;
         Path workingDirectory = Path.of(System.getProperty("user.dir"));
         String baseUrl = null;
-        int maxTurns = 50;
+        int maxTurns = CliDefaults.MAX_TURNS;
         String permissionMode = "default";
         boolean tui = false;
         Provider provider = null;
@@ -73,22 +73,22 @@ public record CliConfig(
         // Default model per provider
         if (model == null) {
             model = switch (provider) {
-                case ANTHROPIC -> "claude-sonnet-4-20250514";
-                case OPENAI -> "gpt-5.4-2026-03-05";
+                case ANTHROPIC -> CliDefaults.DEFAULT_ANTHROPIC_MODEL;
+                case OPENAI -> CliDefaults.DEFAULT_OPENAI_MODEL;
             };
         }
 
         // Default base URL per provider
         if (baseUrl == null) {
             baseUrl = switch (provider) {
-                case ANTHROPIC -> "https://api.anthropic.com";
-                case OPENAI -> "https://api.openai.com/v1";
+                case ANTHROPIC -> CliDefaults.DEFAULT_ANTHROPIC_BASE_URL;
+                case OPENAI -> CliDefaults.DEFAULT_OPENAI_BASE_URL;
             };
         }
 
         if (apiKey == null || apiKey.isBlank()) {
-            System.err.println("Error: Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable, or use --api-key flag.");
-            System.exit(1);
+            throw new IllegalArgumentException(
+                "Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable, or use --api-key flag.");
         }
 
         return new CliConfig(apiKey, model, sessionId, workingDirectory, baseUrl, maxTurns, permissionMode, tui, provider);

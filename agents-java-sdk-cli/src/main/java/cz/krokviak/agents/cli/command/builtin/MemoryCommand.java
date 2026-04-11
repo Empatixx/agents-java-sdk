@@ -9,17 +9,17 @@ import java.nio.file.Path;
 
 public class MemoryCommand implements Command {
     @Override public String name() { return "memory"; }
-    @Override public String description() { return "Show loaded CLAUDE.md memory files"; }
+    @Override public String description() { return "Show loaded AGENTS.md memory files"; }
     @Override public void execute(String args, CliContext ctx) {
         ctx.output().println("Memory files:");
 
-        Path global = Path.of(System.getProperty("user.home"), ".claude", "CLAUDE.md");
+        Path global = Path.of(System.getProperty("user.home"), ".krok", "AGENTS.md");
         checkFile(ctx, "Global", global);
 
-        Path projectDot = ctx.workingDirectory().resolve(".claude").resolve("CLAUDE.md");
-        checkFile(ctx, "Project (.claude/)", projectDot);
+        Path projectDot = ctx.workingDirectory().resolve(".krok").resolve("AGENTS.md");
+        checkFile(ctx, "Project (.krok/)", projectDot);
 
-        Path projectRoot = ctx.workingDirectory().resolve("CLAUDE.md");
+        Path projectRoot = ctx.workingDirectory().resolve("AGENTS.md");
         checkFile(ctx, "Project (root)", projectRoot);
     }
 

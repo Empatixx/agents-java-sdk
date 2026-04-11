@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.Random;
 
 /**
- * Persistent plan file storage. Plans live at ~/.claude/plans/{slug}.md
+ * Persistent plan file storage. Plans live at ~/.krok/plans/{slug}.md
  */
 public final class PlanStore {
 
@@ -28,7 +28,7 @@ public final class PlanStore {
     private String currentSlug;
 
     public PlanStore() {
-        this.plansDir = Path.of(System.getProperty("user.home"), ".claude", "plans");
+        this.plansDir = Path.of(System.getProperty("user.home"), ".krok", "plans");
     }
 
     /** Create a new plan with a generated slug. Returns the slug. */

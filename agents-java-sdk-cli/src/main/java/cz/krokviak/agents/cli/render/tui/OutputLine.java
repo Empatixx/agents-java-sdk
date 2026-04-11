@@ -14,17 +14,18 @@ public sealed interface OutputLine {
 
     StyledElement<?> render();
 
-    /** First line of AI response — with ● bullet. */
+    /** First line of AI response — with ● bullet, markdown styled. */
     record TextStart(String content) implements OutputLine {
         public StyledElement<?> render() {
-            return row(text("  ● ").dim().fit(), text(content).fit());
+            var md = MarkdownRenderer.renderLine(content, "");
+            return row(text("  ● ").dim().fit(), md);
         }
     }
 
-    /** Continuation lines of AI response — no bullet. */
+    /** Continuation lines of AI response — no bullet, markdown styled. */
     record Text(String content) implements OutputLine {
         public StyledElement<?> render() {
-            return text("    " + content);
+            return MarkdownRenderer.renderLine(content, "    ");
         }
     }
 
@@ -38,6 +39,13 @@ public sealed interface OutputLine {
     record Dim(String content) implements OutputLine {
         public StyledElement<?> render() {
             return text("  " + content).dim();
+        }
+    }
+
+    /** Code block line — monospace dim with indent. */
+    record CodeLine(String content) implements OutputLine {
+        public StyledElement<?> render() {
+            return text("      " + content).fg(Color.indexed(246));
         }
     }
 

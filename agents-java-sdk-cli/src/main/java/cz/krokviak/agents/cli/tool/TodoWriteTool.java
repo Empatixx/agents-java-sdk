@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 public class TodoWriteTool implements ExecutableTool {
-    private static final Path TODOS_PATH = Path.of(System.getProperty("user.home"), ".claude-cli", "todos.json");
+    private static final Path TODOS_PATH = Path.of(System.getProperty("user.home"), ".krok", "todos.json");
 
     private final ToolDefinition toolDefinition;
 

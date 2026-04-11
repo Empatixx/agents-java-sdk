@@ -24,35 +24,38 @@ import cz.krokviak.agents.cli.render.PlainRenderer;
 import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.skill.SkillLoader;
 import cz.krokviak.agents.cli.skill.SkillRegistry;
-import cz.krokviak.agents.cli.tool.*;
-import cz.krokviak.agents.cli.tool.MemoryWriteTool;
-import cz.krokviak.agents.cli.tool.MemoryReadTool;
 import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
-import cz.krokviak.agents.model.OpenAIChatCompletionsModel;
+import cz.krokviak.agents.session.AdvancedSQLiteSession;
 import cz.krokviak.agents.session.Session;
-import cz.krokviak.agents.session.SQLiteSession;
-import cz.krokviak.agents.tool.ExecutableTool;
+import cz.krokviak.agents.session.SessionMetadata;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.Instant;
+import java.util.UUID;
 
 public class CLI {
 
     public static void main(String[] args) {
-        CliConfig config = CliConfig.parse(args);
+        CliConfig config;
+        try {
+            config = CliConfig.parse(args);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            System.exit(1);
+            return;
+        }
         Model model = switch (config.provider()) {
             case ANTHROPIC -> new AnthropicModel(config.apiKey(), config.baseUrl(), config.model());
             case OPENAI -> new cz.krokviak.agents.model.OpenAIOfficalModel(config.apiKey(), config.baseUrl(), config.model());
         };
         Path cwd = config.workingDirectory();
 
-        // Memory store — ~/.claude/projects/<cwd-hash>/memory/
+        // Memory store — ~/.krok/projects/<cwd-hash>/memory/
         String cwdKey = cwd.toAbsolutePath().toString()
             .replaceAll("[^a-zA-Z0-9]", "_").replaceAll("_+", "_").replaceAll("^_|_$", "");
-        Path memoryDir = Path.of(System.getProperty("user.home"), ".claude", "projects", cwdKey, "memory");
+        Path memoryDir = Path.of(System.getProperty("user.home"), ".krok", "projects", cwdKey, "memory");
         MemoryStore memoryStore = new MemoryStore(memoryDir);
 
         // Memory + prompt
@@ -67,17 +70,22 @@ public class CLI {
         };
         PermissionManager permissionManager = new PermissionManager(permMode);
 
-        // Session
-        Session session = null;
-        if (config.sessionId() != null) {
-            try {
-                Path sessionDir = Path.of(System.getProperty("user.home"), ".claude-cli");
-                Files.createDirectories(sessionDir);
-                session = new SQLiteSession(sessionDir.resolve("sessions.db"));
-            } catch (Exception e) {
-                System.err.println("Warning: Failed to initialize session storage: " + e.getMessage());
+        // Session — always create, auto-generate ID if not provided
+        AdvancedSQLiteSession advancedSession = null;
+        String sessionId = config.sessionId();
+        try {
+            Path sessionDir = Path.of(System.getProperty("user.home"), ".krok-cli");
+            Files.createDirectories(sessionDir);
+            advancedSession = new AdvancedSQLiteSession(sessionDir.resolve("sessions.db"));
+            if (sessionId == null) {
+                sessionId = UUID.randomUUID().toString().substring(0, 8);
             }
+            advancedSession.saveMetadata(new SessionMetadata(
+                sessionId, null, Instant.now(), Instant.now(), 0, cwd.toAbsolutePath().toString()));
+        } catch (Exception e) {
+            System.err.println("Warning: Failed to initialize session storage: " + e.getMessage());
         }
+        Session session = advancedSession;
 
         // Skills
         SkillRegistry skillRegistry = new SkillRegistry();
@@ -108,8 +116,9 @@ public class CLI {
         }
         ContextCompactor compactor = new ContextCompactor(model);
         CliContext ctx = new CliContext(model, config.model(), config.apiKey(), config.baseUrl(),
-            output, permissionManager, compactor, cwd, systemPrompt, session, config.sessionId(),
+            output, permissionManager, compactor, cwd, systemPrompt, session, sessionId,
             taskManager, mailboxManager);
+        ctx.setAdvancedSession(advancedSession);
 
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {
@@ -130,61 +139,11 @@ public class CLI {
         hooks.register(new GuardrailHook());
         hooks.register(new PermissionHook(permissionManager));
 
-        // Tools — file system
-        List<ExecutableTool> toolList = new ArrayList<>(List.of(
-            new ReadFileTool(cwd), new WriteFileTool(cwd), new EditFileTool(cwd),
-            new BashTool(cwd), new GlobTool(cwd), new GrepTool(cwd), new ListDirectoryTool(cwd)
-        ));
-
-        // Tools — web
-        toolList.add(new WebFetchTool());
-        toolList.add(new WebSearchTool());
-        toolList.add(new PowerShellTool(cwd));
-
-        // Tools — planning & interaction
-        toolList.add(new EnterPlanModeTool(ctx, planStore));
-        toolList.add(new ExitPlanModeTool(ctx, planStore));
-        toolList.add(new AskUserQuestionTool(ctx));
-        toolList.add(new SendMessageTool(mailboxManager));
-
-        // Tools — task management
-        toolList.add(new TaskCreateTool(taskManager));
-        toolList.add(new TaskGetTool(taskManager));
-        toolList.add(new TaskListTool(taskManager));
-        toolList.add(new TaskUpdateTool(taskManager));
-        toolList.add(new TaskStopTool(taskManager));
-        toolList.add(new NotebookEditTool(cwd));
-        toolList.add(new SkillTool(skillRegistry));
-
-        // Tools — memory
-        toolList.add(new MemoryWriteTool(memoryStore));
-        toolList.add(new MemoryReadTool(memoryStore));
-
-        // Tools — task output & synthetic output
-        toolList.add(new TaskOutputTool(taskManager));
-        toolList.add(new SyntheticOutputTool());
-
-        // Tools — cron scheduling
-        toolList.add(new CronCreateTool(cronScheduler));
-        toolList.add(new CronDeleteTool(cronScheduler));
-        toolList.add(new CronListTool(cronScheduler));
-
-        // Tools — remote trigger
-        toolList.add(new RemoteTriggerTool());
-
-        // Tools — brief, config, todo
-        toolList.add(new BriefTool(model));
-        toolList.add(new ConfigTool());
-        toolList.add(new TodoWriteTool());
-
-        // Tool dispatcher
-        ToolDispatcher toolDispatcher = new ToolDispatcher(toolList, hooks, ctx);
-
-        // Tools that need ToolDispatcher/TaskManager/AgentRegistry (added after dispatcher creation)
-        toolList.add(new AgentTool(ctx, toolList, taskManager, agentRegistry));
-        toolList.add(new ToolSearchTool(toolDispatcher));
-        toolList.add(new TeamCreateTool(teamManager));
-        toolList.add(new TeamDeleteTool(teamManager));
+        // Tools & dispatcher
+        ToolRegistry toolRegistry = ToolRegistry.create(ctx, cwd, model,
+            taskManager, mailboxManager, memoryStore, skillRegistry,
+            cronScheduler, agentRegistry, teamManager, planStore, hooks);
+        ToolDispatcher toolDispatcher = toolRegistry.dispatcher();
 
         // Commands (20 total)
         Commands commands = new Commands();
@@ -197,6 +156,7 @@ public class CLI {
         commands.register(new PermissionsCommand());
         commands.register(new UndoCommand());
         commands.register(new SessionCommand());
+        commands.register(new ResumeCommand());
         commands.register(new TasksCommand(taskManager));
         commands.register(new PlanCommand(planStore));
         commands.register(new DiffCommand());
@@ -218,13 +178,14 @@ public class CLI {
 
         // Banner
         output.println("");
-        output.println("\033[1mClaude Code CLI (Java)\033[0m — model: " + config.model());
+        output.println("\033[1mKrok AI\033[0m — model: " + config.model());
         output.println("Working directory: " + cwd);
+        output.println("\033[2mSession: " + sessionId + "\033[0m");
         if (permMode != PermissionManager.PermissionMode.TRUST) {
             output.println("Permission mode: " + config.permissionMode());
         }
         if (!projectInstructions.isBlank()) {
-            output.println("\033[2mLoaded project instructions from CLAUDE.md\033[0m");
+            output.println("\033[2mLoaded project instructions from AGENTS.md\033[0m");
         }
         output.println("Type /help for commands, /exit to quit");
 

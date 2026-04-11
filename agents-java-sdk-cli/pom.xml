@@ -10,7 +10,7 @@
     </parent>
     <artifactId>agents-java-sdk-cli</artifactId>
     <name>Agents Java SDK - CLI</name>
-    <description>Claude Code-like CLI with file system tools and streaming REPL</description>
+    <description>Krok AI — CLI agent with file system tools and streaming REPL</description>
 
     <repositories>
         <repository>
@@ -72,6 +72,11 @@
         <dependency>
             <groupId>dev.tamboui</groupId>
             <artifactId>tamboui-jline3-backend</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

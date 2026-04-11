@@ -57,17 +57,17 @@ public final class SkillLoader {
     }
 
     /**
-     * Load skills from .claude/skills/ in the project directory.
+     * Load skills from .krok/skills/ in the project directory.
      */
     public static List<Skill> loadProjectSkills(Path cwd) {
-        return scanDirectory(cwd.resolve(".claude").resolve("skills"));
+        return scanDirectory(cwd.resolve(".krok").resolve("skills"));
     }
 
     /**
-     * Load skills from ~/.claude/skills/.
+     * Load skills from ~/.krok/skills/.
      */
     public static List<Skill> loadUserSkills() {
-        Path userSkills = Path.of(System.getProperty("user.home"), ".claude", "skills");
+        Path userSkills = Path.of(System.getProperty("user.home"), ".krok", "skills");
         return scanDirectory(userSkills);
     }
 

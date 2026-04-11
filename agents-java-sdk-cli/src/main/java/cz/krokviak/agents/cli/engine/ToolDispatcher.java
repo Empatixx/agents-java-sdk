@@ -50,6 +50,8 @@ public class ToolDispatcher {
 
             return resultText;
         } catch (Exception e) {
+            System.getLogger("ToolDispatcher").log(System.Logger.Level.WARNING,
+                "Tool execution failed: " + toolName, e);
             return "Error executing " + toolName + ": " + e.getMessage();
         }
     }

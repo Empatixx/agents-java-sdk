@@ -10,9 +10,9 @@ import java.util.Map;
 
 public class ReadFileTool implements ExecutableTool {
 
-    private static final int DEFAULT_LIMIT = 200;
-    private static final int MAX_OUTPUT_CHARS = 10_000;
-    private static final long MAX_FILE_SIZE = 256 * 1024; // 256 KB
+    private static final int DEFAULT_LIMIT = cz.krokviak.agents.cli.CliDefaults.READ_DEFAULT_LINES;
+    private static final int MAX_OUTPUT_CHARS = cz.krokviak.agents.cli.CliDefaults.READ_MAX_OUTPUT_CHARS;
+    private static final long MAX_FILE_SIZE = cz.krokviak.agents.cli.CliDefaults.READ_MAX_FILE_SIZE;
 
     private final Path workingDirectory;
     private final ToolDefinition toolDefinition;

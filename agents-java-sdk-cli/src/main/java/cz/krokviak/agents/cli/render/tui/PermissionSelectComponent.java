@@ -10,19 +10,25 @@ import java.util.function.IntConsumer;
 import static dev.tamboui.toolkit.Toolkit.*;
 
 /**
- * Replaces the input area during permission prompts.
- * Arrow-key navigable list of options inside a bordered panel.
+ * Replaces the input area during permission/question prompts.
+ * Numbered vertical list with arrow-key navigation.
  */
 public final class PermissionSelectComponent {
     private PermissionSelectComponent() {}
 
     public static Element render(String header, String[] options,
                                  ListElement<?> optionList, IntConsumer onSelect) {
+        // Build numbered options as formatted strings
+        String[] numbered = new String[options.length];
+        for (int i = 0; i < options.length; i++) {
+            numbered[i] = (i + 1) + ". " + options[i];
+        }
+
         return row(
             spacer(1),
             panel(
                 optionList
-                    .items(options)
+                    .items(numbered)
                     .highlightColor(Color.YELLOW)
                     .highlightSymbol("❯ ")
                     .focusable()
@@ -41,13 +47,19 @@ public final class PermissionSelectComponent {
                             optionList.selected(Math.min(options.length - 1, sel + 1));
                             return EventResult.HANDLED;
                         }
+                        // Number shortcuts
+                        for (int i = 0; i < options.length && i < 9; i++) {
+                            if (event.isChar((char) ('1' + i))) {
+                                onSelect.accept(i);
+                                return EventResult.HANDLED;
+                            }
+                        }
                         if (event.isChar('y')) { onSelect.accept(0); return EventResult.HANDLED; }
-                        if (event.isChar('a')) { onSelect.accept(1); return EventResult.HANDLED; }
-                        if (event.isChar('n')) { onSelect.accept(2); return EventResult.HANDLED; }
+                        if (event.isChar('n')) { onSelect.accept(Math.min(2, options.length - 1)); return EventResult.HANDLED; }
                         return EventResult.UNHANDLED;
                     })
             ).title(header).rounded().borderColor(Color.YELLOW).fill(),
             spacer(1)
-        ).length(options.length + 2); // options + border top/bottom
+        ).length(options.length + 2);
     }
 }

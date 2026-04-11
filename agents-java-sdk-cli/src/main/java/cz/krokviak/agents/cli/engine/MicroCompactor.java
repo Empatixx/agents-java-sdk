@@ -8,7 +8,7 @@ public class MicroCompactor {
     private final int keepRecentToolResults;
 
     public MicroCompactor(int keepRecentToolResults) { this.keepRecentToolResults = keepRecentToolResults; }
-    public MicroCompactor() { this(10); }
+    public MicroCompactor() { this(cz.krokviak.agents.cli.CliDefaults.MICRO_COMPACTOR_KEEP_RECENT); }
 
     public List<InputItem> compact(List<InputItem> history) {
         int toolResultCount = 0;

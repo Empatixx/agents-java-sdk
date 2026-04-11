@@ -75,14 +75,49 @@ public class SQLiteSession implements Session {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private InputItem deserializeToInput(String type, String json) {
         try {
+            var map = objectMapper.readValue(json, java.util.Map.class);
             return switch (type) {
+                case "UserInput" -> new InputItem.UserMessage((String) map.get("content"));
                 case "MessageOutput" -> {
-                    var msg = objectMapper.readTree(json);
-                    yield new InputItem.AssistantMessage(msg.get("content").asText());
+                    String content = (String) map.get("content");
+                    yield new InputItem.AssistantMessage(content != null ? content : "");
                 }
-                default -> new InputItem.AssistantMessage("[" + type + "]");
+                case "ToolCallItem" -> {
+                    String toolCallId = (String) map.get("toolCallId");
+                    String toolName = (String) map.get("toolName");
+                    var arguments = map.get("arguments");
+                    java.util.Map<String, Object> args = arguments instanceof java.util.Map
+                        ? (java.util.Map<String, Object>) arguments : java.util.Map.of();
+                    yield new InputItem.AssistantMessage("",
+                        java.util.List.of(new InputItem.ToolCall(toolCallId, toolName, args)));
+                }
+                case "ToolOutputItem" -> {
+                    String toolCallId = (String) map.get("toolCallId");
+                    String toolName = (String) map.get("toolName");
+                    var outputObj = map.get("output");
+                    String output = "";
+                    if (outputObj instanceof java.util.Map outputMap) {
+                        var text = outputMap.get("text");
+                        if (text != null) output = text.toString();
+                    } else if (outputObj instanceof String s) {
+                        output = s;
+                    }
+                    yield new InputItem.ToolResult(toolCallId, toolName, output);
+                }
+                case "HandoffItem" -> new InputItem.SystemMessage(
+                    "[Handoff: " + map.get("fromAgent") + " → " + map.get("toAgent") + "]");
+                case "CompactionMarker" -> {
+                    String summary = (String) map.get("summary");
+                    var compactedAt = map.get("compactedAt");
+                    int messagesCompacted = map.get("messagesCompacted") instanceof Number n ? n.intValue() : 0;
+                    java.time.Instant instant = compactedAt instanceof String s
+                        ? java.time.Instant.parse(s) : java.time.Instant.now();
+                    yield new InputItem.CompactionMarker(summary != null ? summary : "", instant, messagesCompacted);
+                }
+                default -> new InputItem.SystemMessage("[" + type + "]");
             };
         } catch (JsonProcessingException e) {
             throw new SessionException("Failed to deserialize session item", e);

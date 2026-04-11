@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.engine;
 
 public class TokenBudget {
-    private final int maxBudget;
+    private int maxBudget;
     private int totalTokensUsed;
     private int turnCount;
     private int continuationCount;
@@ -20,5 +20,7 @@ public class TokenBudget {
     public int remaining() { return Math.max(0, maxBudget - totalTokensUsed); }
     public int totalUsed() { return totalTokensUsed; }
     public int turnCount() { return turnCount; }
+    public void extend(int multiplier) { maxBudget *= multiplier; }
+    public int maxBudget() { return maxBudget; }
     public String format() { return String.format("[budget: %,d / %,d tokens, %d turns]", totalTokensUsed, maxBudget, turnCount); }
 }

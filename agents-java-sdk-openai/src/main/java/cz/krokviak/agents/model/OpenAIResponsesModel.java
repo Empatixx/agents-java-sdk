@@ -60,6 +60,8 @@ public class OpenAIResponsesModel implements Model {
                     input.add(new ResponsesDto.InputMessage(null, "function_call_output", null, result.toolCallId(), result.output()));
                 case InputItem.SystemMessage msg ->
                     input.add(new ResponsesDto.InputMessage("system", null, msg.content(), null, null));
+                case InputItem.CompactionMarker marker ->
+                    input.add(new ResponsesDto.InputMessage("system", null, "[Conversation Summary]\n" + marker.summary(), null, null));
             }
         }
 
