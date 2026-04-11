@@ -74,6 +74,8 @@ public final class RenderEventListener {
                 renderer.println("  [Compacted: " + e.messagesBefore() + " → " + e.messagesAfter() + " messages]");
             case CliEvent.SessionLoaded e ->
                 renderer.println("  Loaded " + e.messageCount() + " messages from session: " + e.sessionId());
+            case CliEvent.ImageAttached e ->
+                renderer.println("  \ud83d\uddbc [Image #" + e.index() + "] " + e.path());
             // User events — consumed by business logic listeners, not renderer
             case CliEvent.UserPromptSubmitted _ -> {}
             case CliEvent.UserSelectionMade _ -> {}

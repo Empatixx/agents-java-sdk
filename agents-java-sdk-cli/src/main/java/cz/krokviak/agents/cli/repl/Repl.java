@@ -157,6 +157,7 @@ public class Repl {
 
     private final cz.krokviak.agents.cli.paste.PasteHandler pasteHandler = new cz.krokviak.agents.cli.paste.PasteHandler();
     private cz.krokviak.agents.cli.paste.ImageHandler imageHandler;
+    private int imageCounter = 0;
 
     private cz.krokviak.agents.cli.paste.ImageHandler getImageHandler() {
         if (imageHandler == null) {
@@ -174,21 +175,26 @@ public class Repl {
             try {
                 var img = imgHandler.processImagePath(input);
                 ctx.history().add(img);
-                ctx.output().println("  Image loaded: " + img.description());
-                return "I've attached an image. " + (img.description() != null ? img.description() : "Please analyze it.");
+                imageCounter++;
+                ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ImageAttached(
+                    img.filePath(), imageCounter));
+                return "[Image #" + imageCounter + "] attached. " +
+                    (img.description() != null ? img.description() : "Please analyze it.");
             } catch (Exception e) {
                 log.warn("Failed to process image path", e);
             }
         }
 
-        // 2. Check clipboard for image (when user types short trigger like "img" or pastes nothing useful)
+        // 2. Check clipboard for image (trigger words)
         if (input.length() <= 5 && (input.equalsIgnoreCase("img") || input.equalsIgnoreCase("paste") || input.equalsIgnoreCase("image"))) {
             try {
                 var clipImg = imgHandler.tryClipboardImage();
                 if (clipImg != null) {
                     ctx.history().add(clipImg);
-                    ctx.output().println("  Image from clipboard loaded");
-                    return "I've attached an image from clipboard. Please analyze it.";
+                    imageCounter++;
+                    ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ImageAttached(
+                        clipImg.filePath(), imageCounter));
+                    return "[Image #" + imageCounter + "] attached from clipboard. Please analyze it.";
                 }
             } catch (Exception e) {
                 log.debug("No clipboard image", e);

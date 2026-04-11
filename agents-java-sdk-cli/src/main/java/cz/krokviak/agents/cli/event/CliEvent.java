@@ -34,6 +34,7 @@ public sealed interface CliEvent {
     record BudgetExceeded(int used, int max) implements CliEvent {}
     record CompactionTriggered(int messagesBefore, int messagesAfter) implements CliEvent {}
     record SessionLoaded(String sessionId, int messageCount) implements CliEvent {}
+    record ImageAttached(String path, int index) implements CliEvent {}
 
     // --- User actions (TUI → business logic) ---
     /** User submitted a prompt in the input field. */

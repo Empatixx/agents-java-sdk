@@ -36,6 +36,16 @@ public sealed interface OutputLine {
         }
     }
 
+    /** Image attachment indicator. */
+    record ImageAttached(String path, int index) implements OutputLine {
+        public StyledElement<?> render() {
+            return row(text("  ").fit(),
+                text("\ud83d\uddbc ").fit(),
+                text("[Image #" + index + "]").bold().cyan().fit(),
+                text(" " + path).dim().fit());
+        }
+    }
+
     record Dim(String content) implements OutputLine {
         public StyledElement<?> render() {
             return text("  " + content).dim();
