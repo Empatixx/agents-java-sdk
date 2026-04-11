@@ -96,6 +96,17 @@ public final class ToolRegistry {
         toolList.add(new ConfigTool());
         toolList.add(new TodoWriteTool());
 
+        // Git worktrees
+        toolList.add(new EnterWorktreeTool(ctx));
+        toolList.add(new ExitWorktreeTool(ctx));
+
+        // MCP proxy tools
+        if (ctx.mcpManager() != null) {
+            for (var mcpTool : ctx.mcpManager().allTools()) {
+                toolList.add(new cz.krokviak.agents.cli.mcp.McpProxyTool(ctx.mcpManager(), mcpTool));
+            }
+        }
+
         // Dispatcher (needed by some tools below)
         ToolDispatcher dispatcher = new ToolDispatcher(toolList, hooks, ctx);
 

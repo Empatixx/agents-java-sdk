@@ -28,7 +28,7 @@ public final class CliContext {
     private final CostTracker costTracker;
     private final TaskManager taskManager;
     private final MailboxManager mailboxManager;
-    private final Path workingDirectory;
+    private volatile Path workingDirectory;
     private final String systemPrompt;
     private final ModelSettings modelSettings;
 
@@ -75,6 +75,7 @@ public final class CliContext {
     public TaskManager taskManager() { return taskManager; }
     public MailboxManager mailboxManager() { return mailboxManager; }
     public Path workingDirectory() { return workingDirectory; }
+    public void setWorkingDirectory(Path p) { this.workingDirectory = p; }
     public String systemPrompt() { return systemPrompt; }
     public ModelSettings modelSettings() { return modelSettings; }
     public Model model() { return model; }
@@ -121,6 +122,10 @@ public final class CliContext {
 
     private final cz.krokviak.agents.cli.event.CliEventBus eventBus = new cz.krokviak.agents.cli.event.CliEventBus();
     public cz.krokviak.agents.cli.event.CliEventBus eventBus() { return eventBus; }
+
+    private cz.krokviak.agents.cli.mcp.McpManager mcpManager;
+    public void setMcpManager(cz.krokviak.agents.cli.mcp.McpManager m) { this.mcpManager = m; }
+    public cz.krokviak.agents.cli.mcp.McpManager mcpManager() { return mcpManager; }
 
     private final java.util.concurrent.ConcurrentHashMap<String, String> properties = new java.util.concurrent.ConcurrentHashMap<>();
     public void setProperty(String key, String value) {

@@ -123,6 +123,15 @@ public class CLI {
             taskManager, mailboxManager);
         ctx.setAdvancedSession(advancedSession);
 
+        // MCP servers
+        var mcpManager = new cz.krokviak.agents.cli.mcp.McpManager();
+        mcpManager.initialize(cwd);
+        ctx.setMcpManager(mcpManager);
+        if (mcpManager.hasServers()) {
+            output.println("  MCP: " + mcpManager.allTools().size() + " tools from "
+                + mcpManager.servers().size() + " server(s)");
+        }
+
         // Wire event bus → renderer
         new cz.krokviak.agents.cli.event.RenderEventListener(output).register(ctx.eventBus());
 
