@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.repl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.command.Commands;
@@ -10,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 public class Repl {
+    private static final Logger log = LoggerFactory.getLogger(Repl.class);
     private final CliContext ctx;
     private final Commands commands;
     private final AgentRunner runner;
@@ -30,7 +33,7 @@ public class Repl {
         if (cliApp != null) {
             Thread.ofVirtual().name("cli-app").start(() -> {
                 try { cliApp.run(); } catch (Exception e) {
-                    System.err.println("CliApp error: " + e.getMessage());
+                    log.warn( "CliApp error", e);
                 }
             });
             try { cliApp.awaitReady(); } catch (InterruptedException ignored) {}
@@ -91,13 +94,12 @@ public class Repl {
                 if (input.startsWith("/")) {
                     dispatchCommand(input);
                 } else {
-                    try {
-                        runnerActive = true;
-                        runner.run(input);
-                    } catch (Exception e) {
-                        ctx.output().printError(e.getMessage());
-                    } finally {
-                        runnerActive = false;
+                    runPrompt(input);
+                    // Process any queued prompts that arrived while runner was active
+                    while (true) {
+                        String queued = consumeQueuedPrompt();
+                        if (queued == null) break;
+                        runPrompt(queued);
                     }
                 }
             } catch (Exception e) {
@@ -122,6 +124,34 @@ public class Repl {
         Command cmd = commands.find(name);
         if (cmd == null) { ctx.output().printError("Unknown command: /" + name + " (type /help)"); return; }
         cmd.execute(args, ctx);
+    }
+
+    private void runPrompt(String input) {
+        try {
+            runnerActive = true;
+            if (cliApp != null) cliApp.setRunnerBusy(true);
+            runner.run(input);
+        } catch (Exception e) {
+            ctx.output().printError(e.getMessage());
+        } finally {
+            runnerActive = false;
+            if (cliApp != null) cliApp.setRunnerBusy(false);
+        }
+    }
+
+    private String consumeQueuedPrompt() {
+        if (cliApp == null) return null;
+        // Also drain inputQueue in case something slipped through
+        String fromQueue = cliApp.drainQueued();
+        // Get from controller's queued prompt (set by TUI during runner activity)
+        String fromCtrl = null;
+        if (ctx.promptRenderer() != null) {
+            fromCtrl = ctx.promptRenderer().consumeQueuedPrompt();
+        }
+        // Concatenate both sources
+        if (fromQueue != null && fromCtrl != null) return fromCtrl + "\n" + fromQueue;
+        if (fromCtrl != null) return fromCtrl;
+        return fromQueue;
     }
 
     private void loadSessionHistory() {

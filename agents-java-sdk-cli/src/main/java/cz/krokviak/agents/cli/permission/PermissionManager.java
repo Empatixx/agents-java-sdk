@@ -1,6 +1,6 @@
 package cz.krokviak.agents.cli.permission;
 
-import cz.krokviak.agents.cli.render.tui.TuiRenderer;
+import cz.krokviak.agents.cli.render.PromptRenderer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,14 +25,18 @@ public class PermissionManager {
 
     private final PermissionMode mode;
     private final List<PermissionRule> sessionRules = new ArrayList<>();
-    private volatile TuiRenderer tuiRenderer;
+    private volatile PromptRenderer promptRenderer;
+    private volatile cz.krokviak.agents.cli.render.Renderer renderer;
 
     public PermissionManager(PermissionMode mode) {
         this.mode = mode;
     }
 
-    public void setTuiRenderer(TuiRenderer tuiRenderer) {
-        this.tuiRenderer = tuiRenderer;
+    public void setPromptRenderer(PromptRenderer pr) {
+        this.promptRenderer = pr;
+    }
+    public void setRenderer(cz.krokviak.agents.cli.render.Renderer renderer) {
+        this.renderer = renderer;
     }
 
     public PermissionResult check(String toolName, Map<String, Object> args) {
@@ -63,23 +67,15 @@ public class PermissionManager {
         };
 
         int selected;
-        if (tuiRenderer != null) {
-            selected = tuiRenderer.promptPermission(header, options);
+        if (promptRenderer != null) {
+            selected = promptRenderer.promptSelection(header, options);
+        } else if (renderer != null) {
+            // Fallback: show via renderer, auto-deny
+            renderer.println(header);
+            for (int i = 0; i < options.length; i++) renderer.println("  " + (i + 1) + ") " + options[i]);
+            selected = 2; // auto-deny in non-interactive
         } else {
-            // Fallback for piped/plain mode
-            System.out.println(header);
-            for (int i = 0; i < options.length; i++) {
-                System.out.println("  " + (i + 1) + ") " + options[i]);
-            }
-            System.out.print("  > ");
-            try {
-                int c = System.in.read();
-                while (System.in.available() > 0) System.in.read();
-                selected = switch (c) { case '1', 'y' -> 0; case '2', 'a' -> 1; default -> 2; };
-            } catch (Exception e) {
-                System.getLogger("PermissionManager").log(System.Logger.Level.WARNING, "Failed to read permission input, defaulting to deny", e);
-                selected = 2;
-            }
+            selected = 2;
         }
 
         return switch (selected) {
@@ -102,14 +98,14 @@ public class PermissionManager {
 
     public List<PermissionRule> sessionRules() { return List.copyOf(sessionRules); }
 
-    public void listRules() {
+    public void listRules(cz.krokviak.agents.cli.render.Renderer out) {
         if (sessionRules.isEmpty()) {
-            System.out.println("No session permission rules. Mode: " + mode);
+            out.println("No session permission rules. Mode: " + mode);
             return;
         }
-        System.out.println("Permission mode: " + mode);
+        out.println("Permission mode: " + mode);
         for (PermissionRule rule : sessionRules) {
-            System.out.println("  " + rule.behavior() + " " + rule.toolName() +
+            out.println("  " + rule.behavior() + " " + rule.toolName() +
                 (rule.pattern() != null ? " [" + rule.pattern() + "]" : ""));
         }
     }

@@ -122,10 +122,10 @@ public final class MultiQuestionComponent {
         return row(
             spacer(1),
             panel(
-                column(content.toArray(Element[]::new))
+                row(spacer(1), column(content.toArray(Element[]::new)), spacer(1))
             ).rounded().borderColor(Color.YELLOW).fill(),
             spacer(1)
-        ).length(height);
+        ).length(Math.min(height, 20));
     }
 
     private static void advanceToNextUnanswered(CliController ctrl) {

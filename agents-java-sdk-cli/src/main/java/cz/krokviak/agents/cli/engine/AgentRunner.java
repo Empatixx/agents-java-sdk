@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.engine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.task.TaskManager;
@@ -12,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AgentRunner {
+    private static final Logger log = LoggerFactory.getLogger(AgentRunner.class);
     private final CliContext ctx;
     private final ToolDispatcher toolDispatcher;
     private final int maxTurns;
@@ -57,15 +60,16 @@ public class AgentRunner {
                 // Streaming with eager tool execution
                 StreamingToolExecutor streamingExecutor = new StreamingToolExecutor(toolDispatcher, ctx);
                 StreamCollector collector = new StreamCollector();
-                ctx.output().startSpinner("Thinking...");
+                var bus = ctx.eventBus();
+                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStart("Thinking..."));
                 boolean firstEvent = true;
 
                 try (ModelResponseStream stream = ctx.model().callStreamed(llmCtx, ctx.modelSettings())) {
                     for (ModelResponseStream.Event event : stream) {
-                        if (firstEvent) { ctx.output().stopSpinner(); firstEvent = false; }
+                        if (firstEvent) { bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStop()); firstEvent = false; }
                         switch (event) {
                             case ModelResponseStream.Event.TextDelta td -> {
-                                ctx.output().printTextDelta(td.delta());
+                                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ResponseDelta(td.delta()));
                                 collector.onTextDelta(td.delta());
                             }
                             case ModelResponseStream.Event.ToolCallDelta tcd -> {
@@ -83,14 +87,16 @@ public class AgentRunner {
                         }
                     }
                 } catch (ContextTooLongException e) {
-                    if (firstEvent) ctx.output().stopSpinner();
+                    if (firstEvent) bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStop());
                     streamingExecutor.shutdown();
                     if (retried) {
-                        ctx.output().printError("Context still too large after compaction. Try /compact manually.");
+                        bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(
+                            "Context still too large after compaction. Try /compact manually."));
                         break;
                     }
                     retried = true;
-                    ctx.output().println("\033[2m[Context too large — compacting and retrying]\033[0m");
+                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.CompactionTriggered(
+                        ctx.history().size(), -1));
                     var reactiveCompacted = ctx.compactionPipeline().reactiveCompact(ctx.history(), ctx.systemPrompt());
                     ctx.history().clear();
                     ctx.history().addAll(reactiveCompacted);
@@ -98,8 +104,10 @@ public class AgentRunner {
                     continue;
                 }
                 retried = false;
-                if (firstEvent) ctx.output().stopSpinner();
-                if (collector.text() != null) System.out.println();
+                if (firstEvent) bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStop());
+                if (collector.text() != null) {
+                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ResponseDone(0, 0));
+                }
 
                 // Track cost + token budget
                 ModelResponse resp = collector.response();
@@ -132,18 +140,20 @@ public class AgentRunner {
                     if (!promptExtendBudget()) break;
                 }
                 if (tokenBudget.isDiminishingReturns()) {
-                    ctx.output().println("\033[2m[Diminishing returns detected — stopping]\033[0m");
+                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(
+                        "Diminishing returns detected — stopping"));
                     break;
                 }
             }
 
             if (!tokenBudget.isOverBudget() && !tokenBudget.isDiminishingReturns()) {
-                ctx.output().printError("Reached maximum turns (" + maxTurns + ")");
+                ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(
+                    "Reached maximum turns (" + maxTurns + ")"));
             }
         } catch (Exception e) {
             String msg = e.getMessage();
             if (msg == null) msg = e.getClass().getSimpleName();
-            ctx.output().printError(msg);
+            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(msg));
             e.printStackTrace(System.err);
         }
 
@@ -153,24 +163,28 @@ public class AgentRunner {
     private void injectTaskNotifications() {
         TaskManager tm = ctx.taskManager();
         if (tm == null) return;
+        var bus = ctx.eventBus();
         var notifications = tm.drainNotifications();
         for (var n : notifications) {
             String msg = String.format("<task-notification>\n  task-id: %s\n  status: %s\n  description: %s\n  summary: %s\n</task-notification>",
                 n.taskId(), n.status(), n.description(), n.summary());
             ctx.history().add(new InputItem.SystemMessage(msg));
-            ctx.output().println("\033[2m[Task " + n.taskId() + " " + n.status() + ": " + n.description() + "]\033[0m");
+            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.TaskNotification(
+                n.taskId(), n.description(), n.status().name(), n.summary()));
         }
     }
 
     private void injectMailboxMessages() {
         MailboxManager mailboxManager = ctx.mailboxManager();
         if (mailboxManager == null) return;
+        var bus = ctx.eventBus();
 
         for (var message : mailboxManager.drain("main")) {
             String msg = String.format("<mailbox-message>\n  from: %s\n  to: %s\n  content: %s\n</mailbox-message>",
                 message.sender(), message.recipient(), message.content());
             ctx.history().add(new InputItem.SystemMessage(msg));
-            ctx.output().println("\033[2m[Message from " + message.sender() + "]\033[0m " + message.content());
+            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.MailboxMessage(
+                message.sender(), message.content()));
         }
     }
 
@@ -180,7 +194,7 @@ public class AgentRunner {
                 ctx.session().save(ctx.sessionId(), newItems);
                 updateSessionMetadata();
             } catch (Exception e) {
-                ctx.output().printError("Failed to save session: " + e.getMessage());
+                log.warn("Failed to save session", e);
             }
         }
     }
@@ -190,27 +204,16 @@ public class AgentRunner {
         String header = String.format("Token budget exceeded %s. Increase to %,d?", tokenBudget.format(), newBudget);
         String[] options = {"Yes, increase 2x", "No, stop"};
 
-        var renderer = ctx.tuiRenderer();
-        int selected;
-        if (renderer != null) {
-            selected = renderer.promptPermission(header, options);
-        } else {
-            ctx.output().println(header);
-            ctx.output().println("  1. " + options[0]);
-            ctx.output().println("  2. " + options[1]);
-            try {
-                int c = System.in.read();
-                while (System.in.available() > 0) System.in.read();
-                selected = (c == '1' || c == 'y') ? 0 : 1;
-            } catch (Exception e) { selected = 1; }
-        }
+        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.BudgetExceeded(
+            tokenBudget.totalUsed(), tokenBudget.maxBudget()));
+
+        var renderer = ctx.promptRenderer();
+        int selected = renderer != null ? renderer.promptSelection(header, options) : 1;
 
         if (selected == 0) {
             tokenBudget.extend(2);
-            ctx.output().println("Budget increased to " + String.format("%,d", tokenBudget.maxBudget()) + " tokens.");
             return true;
         }
-        ctx.output().println("Stopping.");
         return false;
     }
 
@@ -230,7 +233,7 @@ public class AgentRunner {
                 ctx.sessionId(), title, java.time.Instant.now(), java.time.Instant.now(),
                 ctx.history().size(), ctx.workingDirectory().toAbsolutePath().toString()));
         } catch (Exception e) {
-            System.getLogger("AgentRunner").log(System.Logger.Level.WARNING, "Failed to update session metadata", e);
+            log.warn( "Failed to update session metadata", e);
         }
     }
 }

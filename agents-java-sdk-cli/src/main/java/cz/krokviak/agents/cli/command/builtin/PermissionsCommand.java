@@ -7,7 +7,7 @@ public class PermissionsCommand implements Command {
     @Override public List<String> aliases() { return List.of("perms"); }
     @Override public String description() { return "Show permission rules"; }
     @Override public void execute(String args, CliContext ctx) {
-        if (ctx.permissions() != null) { ctx.permissions().listRules(); }
+        if (ctx.permissions() != null) { ctx.permissions().listRules(ctx.output()); }
         else { ctx.output().println("Permission system not active (trust mode)."); }
     }
 }

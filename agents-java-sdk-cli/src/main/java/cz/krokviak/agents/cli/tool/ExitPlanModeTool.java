@@ -47,7 +47,7 @@ public class ExitPlanModeTool implements ExecutableTool {
         ctx.output().println("╰" + "─".repeat(50));
 
         // Use permission prompt UI for approval
-        var renderer = ctx.tuiRenderer();
+        var renderer = ctx.promptRenderer();
         if (renderer != null) {
             {
                 String[] options = {
@@ -55,7 +55,7 @@ public class ExitPlanModeTool implements ExecutableTool {
                     "Reject — provide feedback to refine",
                     "Cancel — discard plan"
                 };
-                int selected = renderer.promptPermission("📋 " + slug, options);
+                int selected = renderer.promptSelection("\ud83d\udccb " + slug, options);
 
                 switch (selected) {
                     case 0 -> {

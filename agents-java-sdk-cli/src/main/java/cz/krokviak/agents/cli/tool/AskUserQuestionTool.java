@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.tool;
 
 import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.render.tui.TuiRenderer;
+import cz.krokviak.agents.cli.render.PromptRenderer;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 
@@ -62,7 +62,7 @@ public class AskUserQuestionTool implements ExecutableTool {
         List<Question> questions = parseQuestions(args);
         if (questions.isEmpty()) return ToolOutput.text("Error: at least one question required");
 
-        TuiRenderer renderer = ctx.tuiRenderer();
+        PromptRenderer renderer = ctx.promptRenderer();
 
         if (renderer != null && questions.stream().allMatch(q -> !q.options().isEmpty())) {
             // All questions have options — use multi-question selector UI
@@ -92,27 +92,31 @@ public class AskUserQuestionTool implements ExecutableTool {
             "The user's next message will be their answer. Wait for it.");
     }
 
-    private ToolOutput executeWithSelector(TuiRenderer renderer, List<Question> questions) {
+    private ToolOutput executeWithSelector(PromptRenderer renderer, List<Question> questions) {
         if (questions.size() == 1) {
             // Single question — simple selector
             Question q = questions.getFirst();
             String header = (q.header() != null ? "〔" + q.header() + "〕 " : "❓ ") + q.text();
             String[] opts = q.options().toArray(new String[0]);
             ctx.output().println("");
-            int selected = renderer.promptPermission(header, opts);
+            int selected = renderer.promptSelection(header, opts);
             String answer = (selected >= 0 && selected < opts.length) ? opts[selected] : "(no answer)";
             ctx.output().println("  → " + answer);
             return ToolOutput.text("User answered: " + answer);
         }
 
-        // Multiple questions — use multi-question UI with left/right navigation
-        var cards = questions.stream()
-            .map(q -> new cz.krokviak.agents.cli.render.tui.CliController.QuestionCard(
-                q.header(), q.text(), q.options().toArray(new String[0])))
-            .toList();
-
+        // Multiple questions — sequential prompts
         ctx.output().println("");
-        Map<String, String> answers = renderer.promptMultiQuestion(cards);
+        Map<String, String> answers = new LinkedHashMap<>();
+        for (int i = 0; i < questions.size(); i++) {
+            Question q = questions.get(i);
+            String tag = q.header() != null ? q.header() : "Q" + (i + 1);
+            String header = tag + " (" + (i + 1) + "/" + questions.size() + "): " + q.text();
+            String[] opts = q.options().toArray(new String[0]);
+            int selected = renderer.promptSelection(header, opts);
+            String answer = (selected >= 0 && selected < opts.length) ? opts[selected] : "(no answer)";
+            answers.put(tag, answer);
+        }
 
         // Print summary of answers
         StringBuilder result = new StringBuilder();

@@ -18,7 +18,7 @@ import java.util.Map;
 
 public class AgentSpawner {
 
-    private static final String AGENT_PROMPT = """
+    private static final String AGENT_BASE_PROMPT = """
         You are a sub-agent spawned to handle a specific task. You have access to file system tools. \
         Complete your task thoroughly and return clear, structured results. Be concise but complete.""";
 
@@ -41,17 +41,17 @@ public class AgentSpawner {
         agent.setStatus(AgentStatus.RUNNING);
         registry.register(name, agent);
 
-        ctx.output().renderAgentStatus(name, AgentStatus.RUNNING, "starting");
+        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentStarted(name, name));
 
         try {
             String result = runLoop(name, prompt, tools, model, progress, agent, maxTurns);
             agent.setStatus(AgentStatus.COMPLETED);
-            ctx.output().renderAgentStatus(name, AgentStatus.COMPLETED, progress != null ? progress.getProgressLine() : "done");
+            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentCompleted(name, result.length() > 200 ? result.substring(0, 200) : result));
             registry.remove(name);
             return result;
         } catch (Exception e) {
             agent.setStatus(AgentStatus.FAILED);
-            ctx.output().renderAgentStatus(name, AgentStatus.FAILED, e.getMessage());
+            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentFailed(name, e.getMessage()));
             registry.remove(name);
             return "Error: " + e.getMessage();
         }
@@ -69,7 +69,7 @@ public class AgentSpawner {
         TaskState task = new TaskState(taskId, name);
         taskManager.register(task);
 
-        ctx.output().renderAgentStatus(name, AgentStatus.STARTING, "background");
+        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentStarted(name, "background"));
 
         Thread thread = Thread.startVirtualThread(() -> {
             agent.setStatus(AgentStatus.RUNNING);
@@ -100,20 +100,27 @@ public class AgentSpawner {
      */
     public RunningAgent spawnIsolated(String name, String prompt, List<ExecutableTool> tools,
                                       Model model, ProgressTracker progress, String worktreePath) {
-        ctx.output().renderAgentStatus(name, AgentStatus.STARTING, "isolated:" + worktreePath);
+        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentStarted(name, "isolated:" + worktreePath));
         return spawnBackground(name, prompt, tools, model, progress, 15);
     }
 
     private String runLoop(String agentId, String prompt, List<ExecutableTool> tools,
                            Model model, ProgressTracker progress, RunningAgent agent, int maxTurns) {
         // Tag this thread so TuiRenderer knows which agent's tools to group
-        cz.krokviak.agents.cli.render.tui.TuiRenderer.CURRENT_AGENT.set(agentId);
+        // AgentStarted event already emitted — renderer handles setCurrentAgent via event
         try {
         List<ToolDefinition> defs = tools.stream()
             .filter(t -> !t.name().equals("agent"))
             .map(ExecutableTool::definition)
             .toList();
-        List<InputItem> history = new ArrayList<>(List.of(new InputItem.UserMessage(prompt)));
+
+        // System prompt: same as main worker (AGENTS.md, memory, project instructions) + agent role
+        String systemPrompt = ctx.systemPrompt() + "\n\n" + AGENT_BASE_PROMPT
+            + "\nWorking directory: " + ctx.workingDirectory().toAbsolutePath();
+
+        // History: full main worker history as prefix, then agent's task as last user message
+        List<InputItem> history = new ArrayList<>(ctx.history());
+        history.add(new InputItem.UserMessage(prompt));
         StringBuilder response = new StringBuilder();
 
         for (int turn = 0; turn < maxTurns; turn++) {
@@ -121,7 +128,7 @@ public class AgentSpawner {
             if (progress != null) progress.updateActivity("turn " + (turn + 1));
 
             ModelResponse resp = model.call(
-                new LlmContext(AGENT_PROMPT, List.copyOf(history), defs, null,
+                new LlmContext(systemPrompt, List.copyOf(history), defs, null,
                     ModelSettings.builder().maxTokens(8192).build()),
                 ModelSettings.builder().maxTokens(8192).build());
 
@@ -149,28 +156,34 @@ public class AgentSpawner {
             history.add(new InputItem.AssistantMessage(response.isEmpty() ? null : response.toString(), tcs));
             response.setLength(0);
 
+            var bus = ctx.eventBus();
             for (var tc : tcs) {
-                // Notify renderer so info panel shows agent tool calls
-                ctx.output().printToolCall(tc.name(), tc.arguments());
+                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(
+                    tc.name(), tc.arguments(), tc.id(), true));
+                long startNanos = System.nanoTime();
 
                 ExecutableTool tool = tools.stream()
                     .filter(t -> t.name().equals(tc.name()) && !t.name().equals("agent"))
                     .findFirst().orElse(null);
                 String result = tool != null ? executeSafe(tool, tc.arguments()) : "Error: unknown tool " + tc.name();
                 history.add(new InputItem.ToolResult(tc.id(), tc.name(), result));
-                // Show tool result in output log
-                ctx.output().printToolResult(tc.name(), result);
+
+                long ms = (System.nanoTime() - startNanos) / 1_000_000;
+                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+                    tc.name(), result, result.split("\n", -1).length, ms));
+
                 if (progress != null) progress.addToolUse();
                 agent.addToolUse();
                 if (progress != null) {
-                    ctx.output().renderAgentStatus(agentId, AgentStatus.RUNNING, progress.getProgressLine());
+                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.AgentProgress(
+                        agentId, progress.getProgressLine()));
                 }
             }
         }
 
         return response.isEmpty() ? "(no response)" : response.toString();
         } finally {
-            cz.krokviak.agents.cli.render.tui.TuiRenderer.CURRENT_AGENT.remove();
+            // AgentCompleted/Failed event handles clearCurrentAgent via listener
         }
     }
 
@@ -195,4 +208,5 @@ public class AgentSpawner {
             return "Error: " + e.getMessage();
         }
     }
+
 }

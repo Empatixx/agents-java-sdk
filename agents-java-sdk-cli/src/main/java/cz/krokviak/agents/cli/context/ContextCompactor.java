@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.context;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliDefaults;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.runner.InputItem;
@@ -9,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ContextCompactor {
+    private static final Logger log = LoggerFactory.getLogger(ContextCompactor.class);
 
     private final Model model;
     private final int maxTokens;
@@ -81,7 +84,7 @@ public class ContextCompactor {
 
             return compacted;
         } catch (Exception e) {
-            System.getLogger("ContextCompactor").log(System.Logger.Level.WARNING,
+            log.warn(
                 "Compaction failed, keeping original history: " + e.getMessage());
             return history;
         }

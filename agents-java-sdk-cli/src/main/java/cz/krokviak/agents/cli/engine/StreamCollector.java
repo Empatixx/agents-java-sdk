@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.engine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.krokviak.agents.model.ModelResponse;
@@ -8,6 +10,7 @@ import cz.krokviak.agents.runner.InputItem;
 import java.util.*;
 
 public class StreamCollector {
+    private static final Logger log = LoggerFactory.getLogger(StreamCollector.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final StringBuilder textAccumulator = new StringBuilder();
     private final Map<String, String> toolCallNames = new LinkedHashMap<>();
@@ -43,7 +46,8 @@ public class StreamCollector {
                     arguments = objectMapper.readValue(argsJson.toString(),
                         new TypeReference<Map<String, Object>>() {});
                 } catch (Exception e) {
-                    System.err.println("Warning: Failed to parse tool arguments for " + name + ": " + e.getMessage());
+                    log.warn(
+                        "Failed to parse tool arguments for " + name + ": " + e.getMessage());
                 }
             }
             result.add(new InputItem.ToolCall(id, name, arguments));

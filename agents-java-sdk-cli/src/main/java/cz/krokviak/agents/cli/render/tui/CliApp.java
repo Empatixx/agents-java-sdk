@@ -27,6 +27,9 @@ public final class CliApp extends ToolkitApp {
     private final dev.tamboui.toolkit.elements.ListElement<?> permList = list();
     private Runnable planModeToggle;
     private dev.tamboui.tui.bindings.Bindings appBindings;
+    private final java.util.List<String> inputHistory = new java.util.ArrayList<>();
+    private int historyIndex = -1;
+    private volatile boolean runnerBusy;
 
     public CliApp(CliController ctrl, TuiRenderer renderer) {
         this.ctrl = ctrl;
@@ -67,6 +70,15 @@ public final class CliApp extends ToolkitApp {
 
         runner().eventRouter().addGlobalHandler(event -> {
             if (!(event instanceof dev.tamboui.tui.event.KeyEvent key)) return EventResult.UNHANDLED;
+            // Check binding actions (Shift+Tab → "planMode", Ctrl+O → "expandCollapse")
+            var action = key.action();
+            if (action.isPresent()) {
+                return switch (action.get()) {
+                    case "planMode" -> { togglePlanMode(); yield EventResult.HANDLED; }
+                    case "expandCollapse" -> { renderer.toggleExpand(); yield EventResult.HANDLED; }
+                    default -> EventResult.UNHANDLED;
+                };
+            }
             if (!key.hasCtrl()) return EventResult.UNHANDLED;
             if (key.character() == 'g') { togglePlanMode(); return EventResult.HANDLED; }
             if (key.character() == 'o') { renderer.toggleExpand(); return EventResult.HANDLED; }
@@ -80,14 +92,46 @@ public final class CliApp extends ToolkitApp {
     protected Element render() {
         return CliView.render(ctrl, inputState, permList,
             this::handleSubmit,
-            event -> EventResult.UNHANDLED,
-            renderer::resolvePermission
+            event -> {
+                // Tab completion for /commands
+                if (event.isKey(dev.tamboui.tui.event.KeyCode.TAB)) {
+                    String text = inputState.text();
+                    if (text != null && text.startsWith("/") && text.length() >= 2) {
+                        var suggestions = ctrl.suggestCommands(text);
+                        if (!suggestions.isEmpty()) {
+                            inputState.setText("/" + suggestions.getFirst().command());
+                        }
+                    }
+                    return EventResult.HANDLED;
+                }
+                // History navigation
+                if (event.isUp() && !inputHistory.isEmpty()) {
+                    if (historyIndex > 0) historyIndex--;
+                    inputState.setText(inputHistory.get(historyIndex));
+                    return EventResult.HANDLED;
+                }
+                if (event.isDown()) {
+                    if (historyIndex < inputHistory.size() - 1) {
+                        historyIndex++;
+                        inputState.setText(inputHistory.get(historyIndex));
+                    } else {
+                        historyIndex = inputHistory.size();
+                        inputState.clear();
+                    }
+                    return EventResult.HANDLED;
+                }
+                return EventResult.UNHANDLED;
+            },
+            renderer::resolvePermission,
+            renderer::resolveTextInput
         );
     }
 
     private void handleSubmit() {
         String text = inputState.text().trim();
         if (text.isEmpty()) return;
+        inputHistory.add(text);
+        historyIndex = inputHistory.size();
         runner().runOnRenderThread(() -> {
             inputState.clear();
             if (renderer.hasPermissionPrompt()) {
@@ -101,9 +145,29 @@ public final class CliApp extends ToolkitApp {
             }
             ctrl.addLine(new OutputLine.UserMessage(text));
         });
-        if (!renderer.hasPermissionPrompt()) inputQueue.offer(text);
+        if (!renderer.hasPermissionPrompt()) {
+            if (runnerBusy) {
+                // Runner is active — queue the prompt, show it above input
+                runner().runOnRenderThread(() -> ctrl.appendQueuedPrompt(text));
+            } else {
+                inputQueue.offer(text);
+            }
+        }
     }
+
+    public void setRunnerBusy(boolean busy) { this.runnerBusy = busy; }
 
     public String readLine() throws InterruptedException { return inputQueue.take(); }
     public void awaitReady() throws InterruptedException { ready.await(); }
+
+    /**
+     * Drain all queued inputs (non-blocking) and concatenate them.
+     * Returns null if nothing queued.
+     */
+    public String drainQueued() {
+        java.util.List<String> queued = new java.util.ArrayList<>();
+        inputQueue.drainTo(queued);
+        if (queued.isEmpty()) return null;
+        return String.join("\n", queued);
+    }
 }

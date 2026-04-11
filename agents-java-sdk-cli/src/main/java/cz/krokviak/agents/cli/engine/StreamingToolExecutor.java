@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.engine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.krokviak.agents.cli.CliContext;
@@ -25,6 +27,7 @@ import java.util.concurrent.*;
  * Results are always returned in tool-receipt order regardless of completion order.
  */
 public class StreamingToolExecutor {
+    private static final Logger log = LoggerFactory.getLogger(StreamingToolExecutor.class);
 
     private static final int TOOL_EXECUTION_TIMEOUT_SECONDS = cz.krokviak.agents.cli.CliDefaults.TOOL_EXECUTION_TIMEOUT_SECONDS;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -63,7 +66,7 @@ public class StreamingToolExecutor {
         String name = toolCallNames.get(id);
         if (name != null && ToolClassifier.isReadOnly(name)) {
             Map<String, Object> args = parseArgs(id);
-            ctx.output().renderToolCall(name, args, ToolCallStatus.RUNNING);
+            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(name, args, id, false));
             pendingResults.put(id, CompletableFuture.supplyAsync(
                 () -> executeWithHooks(id, name, args), executor));
         }
@@ -83,6 +86,7 @@ public class StreamingToolExecutor {
             ToolResult result;
             CompletableFuture<ToolResult> pending = pendingResults.get(tc.id());
 
+            var bus = ctx.eventBus();
             if (pending != null) {
                 // Concurrent-safe: was already running; just await result
                 try {
@@ -90,23 +94,23 @@ public class StreamingToolExecutor {
                 } catch (Exception e) {
                     result = new ToolResult(tc.id(), tc.name(),
                         "Error: tool execution timed out or failed: " + e.getMessage());
-                    ctx.output().renderToolCall(tc.name(), tc.arguments(), ToolCallStatus.FAILED);
                 }
-                ctx.output().printToolCall(result.toolName(), tc.arguments());
-                ctx.output().printToolResult(result.toolName(), result.resultText());
+                int lines = result.resultText().split("\n", -1).length;
+                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+                    result.toolName(), result.resultText(), lines, 0));
             } else {
                 // Exclusive: execute now, serially
-                ctx.output().renderToolCall(tc.name(), tc.arguments(), ToolCallStatus.RUNNING);
-                ctx.output().printToolCall(tc.name(), tc.arguments());
+                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(
+                    tc.name(), tc.arguments(), tc.id(), false));
                 long start = System.nanoTime();
                 result = executeWithHooks(tc.id(), tc.name(), tc.arguments());
+                long ms = (System.nanoTime() - start) / 1_000_000;
                 if (result.resultText().startsWith("Permission denied")) {
-                    ctx.output().renderToolCall(tc.name(), tc.arguments(), ToolCallStatus.FAILED);
-                    ctx.output().printPermissionDenied(tc.name());
+                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolBlocked(tc.name(), result.resultText()));
                 } else {
-                    ctx.output().renderToolCall(tc.name(), tc.arguments(), ToolCallStatus.COMPLETED);
-                    ctx.output().printToolResult(tc.name(), result.resultText());
-                    ctx.output().printToolTiming(start);
+                    int lines = result.resultText().split("\n", -1).length;
+                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+                        tc.name(), result.resultText(), lines, ms));
                 }
             }
 
@@ -134,7 +138,8 @@ public class StreamingToolExecutor {
             try {
                 return OBJECT_MAPPER.readValue(argsJson.toString(), new TypeReference<>() {});
             } catch (Exception e) {
-                System.err.println("Warning: Failed to parse tool arguments for " + id + ": " + e.getMessage());
+                log.warn(
+                    "Failed to parse tool arguments for " + id + ": " + e.getMessage());
             }
         }
         return Map.of();

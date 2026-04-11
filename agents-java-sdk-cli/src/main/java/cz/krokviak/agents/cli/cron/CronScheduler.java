@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.cron;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -8,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class CronScheduler {
+    private static final Logger log = LoggerFactory.getLogger(CronScheduler.class);
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
     private final Map<String, CronEntry> entries = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> futures = new ConcurrentHashMap<>();
@@ -71,7 +74,7 @@ public class CronScheduler {
                 try {
                     onFire.accept(updated);
                 } catch (Exception e) {
-                    System.err.println("Cron job " + id + " failed: " + e.getMessage());
+                    log.warn( "Cron job " + id + " failed", e);
                 }
             }
         }, interval.toSeconds(), interval.toSeconds(), TimeUnit.SECONDS);

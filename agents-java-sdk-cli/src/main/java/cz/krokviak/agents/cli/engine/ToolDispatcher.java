@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.engine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.hook.*;
 import cz.krokviak.agents.cli.tool.ToolClassifier;
@@ -12,6 +14,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
 public class ToolDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(ToolDispatcher.class);
     private final List<ExecutableTool> tools;
     private final Hooks hooks;
     private final CliContext ctx;
@@ -50,7 +53,7 @@ public class ToolDispatcher {
 
             return resultText;
         } catch (Exception e) {
-            System.getLogger("ToolDispatcher").log(System.Logger.Level.WARNING,
+            log.warn(
                 "Tool execution failed: " + toolName, e);
             return "Error executing " + toolName + ": " + e.getMessage();
         }
@@ -80,16 +83,21 @@ public class ToolDispatcher {
     }
 
     private void executeAndRecord(InputItem.ToolCall toolCall, List<RunItem> newItems) {
-        ctx.output().printToolCall(toolCall.name(), toolCall.arguments());
+        var bus = ctx.eventBus();
+        bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(
+            toolCall.name(), toolCall.arguments(), toolCall.id(), false));
         long startNanos = System.nanoTime();
 
         String resultText = executeTool(toolCall.name(), toolCall.arguments(), toolCall.id());
+        long ms = (System.nanoTime() - startNanos) / 1_000_000;
 
         if (resultText.startsWith("Permission denied")) {
-            ctx.output().printPermissionDenied(toolCall.name());
+            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolBlocked(
+                toolCall.name(), resultText));
         } else {
-            ctx.output().printToolResult(toolCall.name(), resultText);
-            ctx.output().printToolTiming(startNanos);
+            int lines = resultText.split("\n", -1).length;
+            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+                toolCall.name(), resultText, lines, ms));
         }
 
         ctx.history().add(new InputItem.ToolResult(toolCall.id(), toolCall.name(), resultText));

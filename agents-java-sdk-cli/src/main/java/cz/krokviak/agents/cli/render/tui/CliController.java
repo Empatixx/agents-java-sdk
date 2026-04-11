@@ -46,7 +46,7 @@ public final class CliController {
         return updateLast(type, _ -> true, updater);
     }
 
-    /** Collapse old ToolCall groups to keep max N visible. */
+    /** Collapse old ToolCall lines to keep max N visible. */
     public void collapseOldTools() {
         int count = 0;
         for (var line : lines) { if (line instanceof OutputLine.ToolCall) count++; }
@@ -54,7 +54,6 @@ public final class CliController {
             for (int i = 0; i < lines.size(); i++) {
                 if (lines.get(i) instanceof OutputLine.ToolCall) {
                     lines.remove(i);
-                    if (i < lines.size() && lines.get(i) instanceof OutputLine.CollapseHint) lines.remove(i);
                     count--;
                     break;
                 }
@@ -100,6 +99,19 @@ public final class CliController {
 
     public void resetResponseState() { firstResponseLine = true; inCodeBlock = false; }
 
+    // ========================= Queued prompt =========================
+
+    private String queuedPrompt;
+
+    public void setQueuedPrompt(String prompt) { this.queuedPrompt = prompt; }
+    public void appendQueuedPrompt(String prompt) {
+        if (queuedPrompt == null || queuedPrompt.isBlank()) queuedPrompt = prompt;
+        else queuedPrompt = queuedPrompt + "\n" + prompt;
+    }
+    public String consumeQueuedPrompt() { var q = queuedPrompt; queuedPrompt = null; return q; }
+    public boolean hasQueuedPrompt() { return queuedPrompt != null && !queuedPrompt.isBlank(); }
+    public String queuedPrompt() { return queuedPrompt; }
+
     // ========================= Spinner =========================
 
     private boolean spinnerActive;
@@ -143,16 +155,42 @@ public final class CliController {
     }
     public CollapsedResult popCollapsed() { return collapsed.pollLast(); }
     public boolean hasCollapsed() { return !collapsed.isEmpty(); }
+    public int peekCollapsedLines() { return collapsed.isEmpty() ? 0 : collapsed.peekLast().totalLines(); }
+
+    // ========================= Text input prompt =========================
+
+    private String textInputHeader;
+    private String textInputPlaceholder;
+    private dev.tamboui.widgets.input.TextInputState textInputState;
+
+    public void setTextInputPrompt(String header, String placeholder) {
+        this.textInputHeader = header;
+        this.textInputPlaceholder = placeholder;
+        this.textInputState = new dev.tamboui.widgets.input.TextInputState();
+    }
+    public void clearTextInputPrompt() {
+        this.textInputHeader = null; this.textInputPlaceholder = null; this.textInputState = null;
+    }
+    public boolean hasTextInputPrompt() { return textInputState != null; }
+    public String textInputHeader() { return textInputHeader; }
+    public String textInputPlaceholder() { return textInputPlaceholder; }
+    public dev.tamboui.widgets.input.TextInputState textInputState() { return textInputState; }
 
     // ========================= Permission prompt =========================
 
     private String permHeader;
     private String[] permOptions;
 
+    private int permScrollOffset;
+
     public void setPermissionPrompt(String header, String[] options) {
         this.permHeader = header; this.permOptions = options;
-        this.multiQuestions = null; // clear multi-question if single prompt
+        this.permScrollOffset = 0;
+        this.multiQuestions = null;
     }
+
+    public int permScrollOffset() { return permScrollOffset; }
+    public void setPermScrollOffset(int offset) { this.permScrollOffset = offset; }
     public void clearPermissionPrompt() {
         this.permHeader = null; this.permOptions = null;
         this.multiQuestions = null; this.activeQuestionIdx = 0;
@@ -258,8 +296,6 @@ public final class CliController {
         while (blockEnd < lines.size()) {
             var next = lines.get(blockEnd);
             if (next instanceof OutputLine.ToolCall tc && tc.indented()) blockEnd++;
-            else if (next instanceof OutputLine.CollapseHint) blockEnd++;
-            else if (next instanceof OutputLine.Timing) blockEnd++;
             else break;
         }
 
@@ -269,14 +305,11 @@ public final class CliController {
             if (lines.get(i) instanceof OutputLine.ToolCall) toolCount++;
         }
 
-        // Remove oldest tool call groups if >= MAX_VISIBLE_TOOLS
+        // Remove oldest tool calls if >= MAX_VISIBLE_TOOLS
         while (toolCount >= MAX_VISIBLE_TOOLS) {
             for (int i = agentIdx + 1; i < blockEnd; i++) {
                 if (lines.get(i) instanceof OutputLine.ToolCall) {
                     lines.remove(i); blockEnd--;
-                    if (i < blockEnd && lines.get(i) instanceof OutputLine.CollapseHint) {
-                        lines.remove(i); blockEnd--;
-                    }
                     toolCount--;
                     break;
                 }

@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.agent.AgentRegistry;
 import cz.krokviak.agents.cli.agent.TeamManager;
 import cz.krokviak.agents.cli.command.Commands;
@@ -36,6 +38,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public class CLI {
+    private static final Logger log = LoggerFactory.getLogger(CLI.class);
 
     public static void main(String[] args) {
         CliConfig config;
@@ -83,7 +86,7 @@ public class CLI {
             advancedSession.saveMetadata(new SessionMetadata(
                 sessionId, null, Instant.now(), Instant.now(), 0, cwd.toAbsolutePath().toString()));
         } catch (Exception e) {
-            System.err.println("Warning: Failed to initialize session storage: " + e.getMessage());
+            log.warn( "Failed to init session storage", e);
         }
         Session session = advancedSession;
 
@@ -97,7 +100,7 @@ public class CLI {
         TaskManager taskManager = new TaskManager();
         MailboxManager mailboxManager = new MailboxManager();
         CronScheduler cronScheduler = new CronScheduler(entry ->
-            System.err.println("[cron] Triggered: " + entry.id() + " — " + entry.prompt()));
+            log.info( "Triggered: " + entry.id()));
         AgentRegistry agentRegistry = new AgentRegistry();
         TeamManager teamManager = new TeamManager();
 
@@ -110,7 +113,7 @@ public class CLI {
             var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(ctrl);
             cliApp = new cz.krokviak.agents.cli.render.tui.CliApp(ctrl, tuiRenderer);
             output = tuiRenderer;
-            permissionManager.setTuiRenderer(tuiRenderer);
+            permissionManager.setPromptRenderer(tuiRenderer);
         } else {
             output = new PlainRenderer();
         }
@@ -120,9 +123,12 @@ public class CLI {
             taskManager, mailboxManager);
         ctx.setAdvancedSession(advancedSession);
 
+        // Wire event bus → renderer
+        new cz.krokviak.agents.cli.event.RenderEventListener(output).register(ctx.eventBus());
+
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {
-            ctx.setTuiRenderer(tr);
+            ctx.setPromptRenderer(tr);
         }
 
         // Sync plan mode state to CliController for TUI display
@@ -164,10 +170,31 @@ public class CLI {
         commands.register(new DoctorCommand());
         commands.register(new MemoryCommand());
         commands.register(new HooksCommand(hooks));
+        // Marketplace
+        var marketplaceManager = new cz.krokviak.agents.cli.plugin.marketplace.MarketplaceManager();
+        commands.register(new MarketplaceCommand(marketplaceManager));
+        commands.register(new PluginCommand(marketplaceManager));
+        commands.register(new PluginsCommand());
         commands.register(new HelpCommand(commands));
 
-        // Plugins
-        Plugins.loadAll(new PluginContextImpl(commands, hooks, ctx));
+        // Reconcile marketplaces + load plugins (local + marketplace-installed)
+        marketplaceManager.reconcile();
+        var pluginCtx = new PluginContextImpl(commands, hooks, skillRegistry, ctx);
+        Plugins.loadAll(pluginCtx, cwd);
+        // Also load marketplace-installed plugins
+        for (var pluginPath : marketplaceManager.enabledPluginPaths()) {
+            try {
+                var manifest = pluginPath.resolve("plugin.json");
+                if (!java.nio.file.Files.isRegularFile(manifest)) continue;
+                var plugin = cz.krokviak.agents.cli.plugin.PluginLoader.loadPlugin(pluginPath, manifest);
+                plugin.commands().forEach(pluginCtx::addCommand);
+                plugin.skills().forEach(pluginCtx::addSkill);
+                plugin.hooks().forEach(pluginCtx::addHook);
+                output.println("  Loaded marketplace plugin: " + plugin.name());
+            } catch (Exception e) {
+                log.warn( "Failed to load marketplace plugin from " + pluginPath, e);
+            }
+        }
 
         // Populate command trie for autocomplete
         if (ctrl != null) {

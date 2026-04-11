@@ -15,14 +15,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 /**
  * Thread-safe bridge: Renderer calls → CliController commands via runOnRenderThread.
  */
-public final class TuiRenderer implements Renderer {
+public final class TuiRenderer implements Renderer, cz.krokviak.agents.cli.render.PromptRenderer {
 
     private final CliController ctrl;
     private volatile ToolkitRunner runner;
     private final ConcurrentLinkedQueue<Runnable> pending = new ConcurrentLinkedQueue<>();
 
-    /** Set by AgentSpawner on the agent's thread so printToolCall knows which agent. */
-    public static final ThreadLocal<String> CURRENT_AGENT = new ThreadLocal<>();
+    private static final ThreadLocal<String> CURRENT_AGENT = new ThreadLocal<>();
+
+    @Override public void setCurrentAgent(String agentId) { CURRENT_AGENT.set(agentId); }
+    @Override public void clearCurrentAgent() { CURRENT_AGENT.remove(); }
 
     public TuiRenderer(CliController ctrl) {
         this.ctrl = ctrl;
@@ -64,28 +66,21 @@ public final class TuiRenderer implements Renderer {
 
     @Override
     public void printToolResult(String name, String output) {
-        if (output == null || output.isEmpty() || "agent".equals(name)) return;
-        String[] lines = output.split("\n", -1);
-        String agentName = CURRENT_AGENT.get();
+        if ("agent".equals(name)) return;
+        int lineCount = (output != null && !output.isEmpty()) ? output.split("\n", -1).length : 0;
         ui(() -> {
             ctrl.updateLast(OutputLine.ToolCall.class, tc -> tc.withStatus(ToolCallStatus.COMPLETED));
-            var hint = new OutputLine.CollapseHint(lines.length, 0);
-            if (agentName != null && ctrl.hasActiveAgents()) {
-                ctrl.addLineAfterAgent(agentName, hint);
-            } else {
-                ctrl.addLine(hint);
+            if (output != null && !output.isEmpty()) {
+                ctrl.pushCollapsed(new CliController.CollapsedResult(output, lineCount));
             }
-            ctrl.pushCollapsed(new CliController.CollapsedResult(output, lines.length));
         });
     }
 
     @Override
     public void printToolTiming(long startNanos) {
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
-        ui(() -> {
-            if (!ctrl.updateLast(OutputLine.CollapseHint.class, h -> h.withTiming(ms)))
-                ctrl.addLine(new OutputLine.Timing(ms));
-        });
+        ui(() -> ctrl.updateLast(OutputLine.ToolCall.class, tc -> tc.withResult(
+            ctrl.hasCollapsed() ? ctrl.peekCollapsedLines() : 0, ms)));
     }
 
     @Override
@@ -183,6 +178,11 @@ public final class TuiRenderer implements Renderer {
 
     private final BlockingQueue<Integer> permResult = new LinkedBlockingQueue<>();
 
+    @Override
+    public int promptSelection(String header, String[] options) {
+        return promptPermission(header, options);
+    }
+
     public int promptPermission(String header, String[] options) {
         ui(() -> ctrl.setPermissionPrompt(header, options));
         try { return permResult.take(); } catch (InterruptedException e) { return options.length - 1; }
@@ -194,6 +194,28 @@ public final class TuiRenderer implements Renderer {
     }
 
     public boolean hasPermissionPrompt() { return ctrl.hasPermissionPrompt(); }
+
+    public String consumeQueuedPrompt() {
+        return ctrl.consumeQueuedPrompt();
+    }
+
+    // ---- Text input prompt ----
+
+    private final BlockingQueue<String> textResult = new LinkedBlockingQueue<>();
+
+    /**
+     * Show a text input panel with a bold header. Returns the typed text, or empty on Escape.
+     */
+    @Override
+    public String promptTextInput(String header, String placeholder) {
+        ui(() -> ctrl.setTextInputPrompt(header, placeholder));
+        try { return textResult.take(); } catch (InterruptedException e) { return ""; }
+    }
+
+    public void resolveTextInput(String value) {
+        ui(() -> ctrl.clearTextInputPrompt());
+        textResult.offer(value != null ? value : "");
+    }
 
     /**
      * Multi-question prompt with left/right navigation between questions.

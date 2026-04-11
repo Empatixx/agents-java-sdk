@@ -74,7 +74,7 @@ public final class SkillLoader {
     /**
      * Parse a markdown file from a Path.
      */
-    static Skill loadFromPath(Path p) throws IOException {
+    public static Skill loadFromPath(Path p) throws IOException {
         String raw = Files.readString(p, StandardCharsets.UTF_8);
         return parseSkill(raw, p.toString());
     }

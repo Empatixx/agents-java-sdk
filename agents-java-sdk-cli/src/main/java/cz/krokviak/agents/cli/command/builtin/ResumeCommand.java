@@ -2,7 +2,7 @@ package cz.krokviak.agents.cli.command.builtin;
 
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
-import cz.krokviak.agents.cli.render.tui.TuiRenderer;
+import cz.krokviak.agents.cli.render.PromptRenderer;
 import cz.krokviak.agents.session.SessionMetadata;
 
 import java.time.Duration;
@@ -50,7 +50,7 @@ public class ResumeCommand implements Command {
         }
 
         // Interactive TUI selector
-        TuiRenderer renderer = ctx.tuiRenderer();
+        PromptRenderer renderer = ctx.promptRenderer();
         int limit = Math.min(sessions.size(), 8);
         List<SessionMetadata> visible = sessions.subList(0, limit);
 
@@ -62,7 +62,7 @@ public class ResumeCommand implements Command {
         }
 
         if (renderer != null) {
-            int selected = renderer.promptPermission("Resume session", options);
+            int selected = renderer.promptSelection("Resume session", options);
             if (selected <= 0 || selected > visible.size()) {
                 ctx.output().println("Cancelled.");
                 return;

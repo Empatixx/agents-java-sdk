@@ -2,10 +2,10 @@ package cz.krokviak.agents.cli.render.tui;
 
 import dev.tamboui.toolkit.element.Element;
 import dev.tamboui.toolkit.elements.ListElement;
-import dev.tamboui.toolkit.event.EventResult;
 import dev.tamboui.toolkit.event.KeyEventHandler;
 import dev.tamboui.widgets.input.TextInputState;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static dev.tamboui.toolkit.Toolkit.*;
@@ -19,8 +19,21 @@ public final class CliView {
     public static Element render(CliController ctrl, TextInputState inputState,
                                  ListElement<?> permissionList,
                                  Runnable onSubmit, KeyEventHandler inputKeys,
-                                 java.util.function.IntConsumer onPermissionSelect) {
-        // Multi-question mode (left/right navigable)
+                                 java.util.function.IntConsumer onPermissionSelect,
+                                 java.util.function.Consumer<String> onTextInputSubmit) {
+        // Text input prompt mode
+        if (ctrl.hasTextInputPrompt()) {
+            return column(
+                OutputLogComponent.render(ctrl),
+                SpinnerBarComponent.render(ctrl),
+                TextInputPromptComponent.render(
+                    ctrl.textInputHeader(), ctrl.textInputPlaceholder(),
+                    ctrl.textInputState(), onTextInputSubmit),
+                InfoPanelComponent.render(ctrl, List.of())
+            );
+        }
+
+        // Multi-question mode
         if (ctrl.hasMultiQuestions()) {
             return column(
                 OutputLogComponent.render(ctrl),
@@ -30,14 +43,14 @@ public final class CliView {
             );
         }
 
-        // Permission mode (single question)
+        // Permission/selector mode
         if (ctrl.hasPermissionPrompt()) {
             return column(
                 OutputLogComponent.render(ctrl),
                 SpinnerBarComponent.render(ctrl),
                 PermissionSelectComponent.render(
                     ctrl.permissionHeader(), ctrl.permissionOptions(),
-                    permissionList, onPermissionSelect),
+                    permissionList, onPermissionSelect, ctrl),
                 InfoPanelComponent.render(ctrl, List.of())
             );
         }
@@ -45,11 +58,20 @@ public final class CliView {
         // Normal mode
         List<CommandTrie.Match> suggestions = ctrl.suggestCommands(inputState.text());
 
-        return column(
-            OutputLogComponent.render(ctrl),
-            SpinnerBarComponent.render(ctrl),
-            InputAreaComponent.render(inputState, ctrl.isPlanMode(), onSubmit, inputKeys),
-            InfoPanelComponent.render(ctrl, suggestions)
-        );
+        var elements = new ArrayList<Element>();
+        elements.add(OutputLogComponent.render(ctrl));
+        elements.add(SpinnerBarComponent.render(ctrl));
+
+        // Queued prompt bar above input
+        if (ctrl.hasQueuedPrompt()) {
+            String preview = ctrl.queuedPrompt().replace('\n', ' ');
+            if (preview.length() > 70) preview = preview.substring(0, 70) + "...";
+            elements.add(row(spacer(1), text(" \u23f3 " + preview).dim().italic(), spacer(1)));
+        }
+
+        elements.add(InputAreaComponent.render(inputState, ctrl.isPlanMode(), onSubmit, inputKeys));
+        elements.add(InfoPanelComponent.render(ctrl, suggestions));
+
+        return column(elements.toArray(Element[]::new));
     }
 }

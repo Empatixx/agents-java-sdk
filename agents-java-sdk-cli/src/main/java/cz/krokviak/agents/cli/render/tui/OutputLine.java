@@ -55,10 +55,14 @@ public sealed interface OutputLine {
         }
     }
 
-    /** Tool call: ● name(args) — updates in-place. */
-    record ToolCall(String name, String args, ToolCallStatus status, boolean indented) implements OutputLine {
+    /** Tool call: single line that updates in-place. ● name(args) → ● name(args) (1.2s, 47 lines) */
+    record ToolCall(String name, String args, ToolCallStatus status, boolean indented,
+                    long ms, int resultLines) implements OutputLine {
         public ToolCall(String name, String args, ToolCallStatus status) {
-            this(name, args, status, false);
+            this(name, args, status, false, 0, 0);
+        }
+        public ToolCall(String name, String args, ToolCallStatus status, boolean indented) {
+            this(name, args, status, indented, 0, 0);
         }
 
         public StyledElement<?> render() {
@@ -75,38 +79,30 @@ public sealed interface OutputLine {
                 case FAILED -> text(icon + " ").red().fit();
                 case PENDING -> text(icon + " ").dim().fit();
             };
-            return row(text(pad).fit(), iconEl, text(name).bold().fit(), text("(" + trunc(args, 80) + ")").dim().fit());
+
+            String suffix = "";
+            if (status == ToolCallStatus.COMPLETED || status == ToolCallStatus.FAILED) {
+                String time = ms > 0 ? (ms >= 1000 ? String.format("%.1fs", ms / 1000.0) : ms + "ms") : "";
+                String lines = resultLines > 0 ? resultLines + " lines" : "";
+                if (!time.isEmpty() && !lines.isEmpty()) suffix = " (" + time + ", " + lines + ")";
+                else if (!time.isEmpty()) suffix = " (" + time + ")";
+                else if (!lines.isEmpty()) suffix = " (" + lines + ")";
+            }
+
+            return row(text(pad).fit(), iconEl,
+                text(name).bold().fit(),
+                text("(" + trunc(args, 60) + ")").dim().fit(),
+                text(suffix).dim().fit());
         }
 
-        public ToolCall withStatus(ToolCallStatus s) { return new ToolCall(name, args, s, indented); }
+        public ToolCall withStatus(ToolCallStatus s) { return new ToolCall(name, args, s, indented, ms, resultLines); }
+        public ToolCall withResult(int lines, long ms) { return new ToolCall(name, args, ToolCallStatus.COMPLETED, indented, ms, lines); }
     }
 
-    /** Tool result line: ⎿ text */
+    /** Expanded tool result line (ctrl+o). */
     record Result(String line) implements OutputLine {
         public StyledElement<?> render() {
-            return text("    ⎿  " + line).dim();
-        }
-    }
-
-    /** Collapse hint with timing. */
-    record CollapseHint(int hiddenLines, long ms) implements OutputLine {
-        public StyledElement<?> render() {
-            String time = ms > 0 ? (ms >= 1000 ? String.format("%.1fs", ms / 1000.0) : ms + "ms") : "";
-            String hint = hiddenLines > 0
-                ? "(" + hiddenLines + " more lines, ctrl+o to expand)"
-                : "(ctrl+o to expand)";
-            String suffix = time.isEmpty() ? "" : " · " + time;
-            return text("    ⎿  " + hint + suffix).dim();
-        }
-
-        public CollapseHint withTiming(long newMs) { return new CollapseHint(hiddenLines, newMs); }
-    }
-
-    /** Timing only (when no collapse). */
-    record Timing(long ms) implements OutputLine {
-        public StyledElement<?> render() {
-            String time = ms >= 1000 ? String.format("%.1fs", ms / 1000.0) : ms + "ms";
-            return text("    ⎿  (" + time + ")").dim();
+            return text("    \u23bf  " + line).dim();
         }
     }
 

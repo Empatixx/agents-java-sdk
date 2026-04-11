@@ -103,9 +103,14 @@ public final class CliContext {
     public void setPlanStore(cz.krokviak.agents.cli.plan.PlanStore store) { this.planStore = store; }
     public cz.krokviak.agents.cli.plan.PlanStore planStore() { return planStore; }
 
-    private cz.krokviak.agents.cli.render.tui.TuiRenderer tuiRenderer;
-    public void setTuiRenderer(cz.krokviak.agents.cli.render.tui.TuiRenderer r) { this.tuiRenderer = r; }
-    public cz.krokviak.agents.cli.render.tui.TuiRenderer tuiRenderer() { return tuiRenderer; }
+    private cz.krokviak.agents.cli.render.PromptRenderer promptRenderer;
+    public void setPromptRenderer(cz.krokviak.agents.cli.render.PromptRenderer r) { this.promptRenderer = r; }
+    public cz.krokviak.agents.cli.render.PromptRenderer promptRenderer() { return promptRenderer; }
+
+    /** @deprecated Use promptRenderer() instead */
+    public cz.krokviak.agents.cli.render.tui.TuiRenderer tuiRenderer() {
+        return promptRenderer instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer t ? t : null;
+    }
 
     private AdvancedSQLiteSession advancedSession;
     public void setAdvancedSession(AdvancedSQLiteSession s) { this.advancedSession = s; }
@@ -113,4 +118,13 @@ public final class CliContext {
 
     private final TokenEstimator tokenEstimator = new TokenEstimator();
     public TokenEstimator tokenEstimator() { return tokenEstimator; }
+
+    private final cz.krokviak.agents.cli.event.CliEventBus eventBus = new cz.krokviak.agents.cli.event.CliEventBus();
+    public cz.krokviak.agents.cli.event.CliEventBus eventBus() { return eventBus; }
+
+    private final java.util.concurrent.ConcurrentHashMap<String, String> properties = new java.util.concurrent.ConcurrentHashMap<>();
+    public void setProperty(String key, String value) {
+        if (value == null) properties.remove(key); else properties.put(key, value);
+    }
+    public String getProperty(String key) { return properties.get(key); }
 }

@@ -40,7 +40,7 @@ public record CliConfig(
                 case "--provider" -> provider = Provider.valueOf(args[++i].toUpperCase());
                 default -> {
                     if (args[i].startsWith("-")) {
-                        System.err.println("Unknown option: " + args[i]);
+                        // unknown option — silently ignore
                     }
                 }
             }
