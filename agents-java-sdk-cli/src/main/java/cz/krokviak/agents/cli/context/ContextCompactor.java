@@ -105,6 +105,7 @@ public class ContextCompactor {
                     .append(truncate(m.output(), 200)).append("]\n");
                 case InputItem.SystemMessage m -> sb.append("System: ").append(m.content()).append("\n");
                 case InputItem.CompactionMarker m -> sb.append("Summary: ").append(m.summary()).append("\n");
+                case InputItem.ImageContent _ -> sb.append("[Image]\n");
             }
         }
         return sb.toString();

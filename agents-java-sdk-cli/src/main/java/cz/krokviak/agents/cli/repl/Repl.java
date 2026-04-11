@@ -94,6 +94,7 @@ public class Repl {
                 if (input.startsWith("/")) {
                     dispatchCommand(input);
                 } else {
+                    input = handlePasteAndImages(input);
                     runPrompt(input);
                     // Process any queued prompts that arrived while runner was active
                     while (true) {
@@ -152,6 +153,39 @@ public class Repl {
         if (fromQueue != null && fromCtrl != null) return fromCtrl + "\n" + fromQueue;
         if (fromCtrl != null) return fromCtrl;
         return fromQueue;
+    }
+
+    private final cz.krokviak.agents.cli.paste.PasteHandler pasteHandler = new cz.krokviak.agents.cli.paste.PasteHandler();
+    private final cz.krokviak.agents.cli.paste.ImageHandler imageHandler =
+        new cz.krokviak.agents.cli.paste.ImageHandler("default");
+
+    private String handlePasteAndImages(String input) {
+        // Check if input is an image path
+        if (imageHandler.isImagePath(input)) {
+            try {
+                var img = imageHandler.processImagePath(input);
+                ctx.history().add(img);
+                ctx.output().println("  Image loaded: " + img.filePath());
+                return "I've attached an image. " + (img.description() != null ? img.description() : "Please analyze it.");
+            } catch (Exception e) {
+                log.warn("Failed to process image", e);
+            }
+        }
+
+        // Check for large paste
+        if (pasteHandler.isPaste(input)) {
+            var result = pasteHandler.savePaste(input);
+            if (result != null) {
+                // Add full content to history as system message so model sees it
+                ctx.history().add(new cz.krokviak.agents.runner.InputItem.SystemMessage(
+                    "<pasted-content path=\"" + result.filePath().toAbsolutePath() + "\">\n"
+                    + result.content() + "\n</pasted-content>"));
+                ctx.output().println("  Pasted " + result.lineCount() + " lines → " + result.filePath().getFileName());
+                return result.reference();
+            }
+        }
+
+        return input;
     }
 
     private void loadSessionHistory() {

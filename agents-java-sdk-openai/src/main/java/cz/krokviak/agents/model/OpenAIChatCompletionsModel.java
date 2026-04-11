@@ -73,6 +73,7 @@ public class OpenAIChatCompletionsModel implements Model {
                     messages.add(new ChatCompletionsDto.Message("system", msg.content(), null, null));
                 case InputItem.CompactionMarker marker ->
                     messages.add(new ChatCompletionsDto.Message("system", "[Conversation Summary]\n" + marker.summary(), null, null));
+                case InputItem.ImageContent _ -> {} // images not forwarded in this context
             }
         }
 

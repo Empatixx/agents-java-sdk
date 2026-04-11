@@ -62,6 +62,7 @@ public class OpenAIResponsesModel implements Model {
                     input.add(new ResponsesDto.InputMessage("system", null, msg.content(), null, null));
                 case InputItem.CompactionMarker marker ->
                     input.add(new ResponsesDto.InputMessage("system", null, "[Conversation Summary]\n" + marker.summary(), null, null));
+                case InputItem.ImageContent _ -> {} // images not forwarded in this context
             }
         }
 

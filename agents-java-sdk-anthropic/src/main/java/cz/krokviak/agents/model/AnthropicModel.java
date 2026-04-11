@@ -107,6 +107,15 @@ public class AnthropicModel implements Model {
                 case InputItem.ToolResult result ->
                     raw.add(new AnthropicDto.Message("user",
                         List.of(new AnthropicDto.ContentBlock.ToolResultBlock(result.toolCallId(), result.output()))));
+                case InputItem.ImageContent img -> {
+                    List<AnthropicDto.ContentBlock> content = new ArrayList<>();
+                    content.add(new AnthropicDto.ContentBlock.ImageBlock(
+                        AnthropicDto.ContentBlock.ImageSource.base64(img.mediaType(), img.base64Data())));
+                    if (img.description() != null && !img.description().isBlank()) {
+                        content.add(new AnthropicDto.ContentBlock.TextBlock(img.description()));
+                    }
+                    raw.add(new AnthropicDto.Message("user", content));
+                }
             }
         }
 
@@ -152,7 +161,8 @@ public class AnthropicModel implements Model {
                         outputs.add(new ModelResponse.OutputItem.Message(tb.text()));
                     case AnthropicDto.ContentBlock.ToolUseBlock tub ->
                         outputs.add(new ModelResponse.OutputItem.ToolCallRequest(tub.id(), tub.name(), tub.input()));
-                    case AnthropicDto.ContentBlock.ToolResultBlock _ -> {} // not expected in responses
+                    case AnthropicDto.ContentBlock.ToolResultBlock _ -> {}
+                    case AnthropicDto.ContentBlock.ImageBlock _ -> {} // not expected in responses
                 }
             }
         }

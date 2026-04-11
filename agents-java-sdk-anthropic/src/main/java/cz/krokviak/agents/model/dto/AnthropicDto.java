@@ -33,9 +33,10 @@ public final class AnthropicDto {
     @JsonSubTypes({
         @JsonSubTypes.Type(value = ContentBlock.TextBlock.class, name = "text"),
         @JsonSubTypes.Type(value = ContentBlock.ToolUseBlock.class, name = "tool_use"),
-        @JsonSubTypes.Type(value = ContentBlock.ToolResultBlock.class, name = "tool_result")
+        @JsonSubTypes.Type(value = ContentBlock.ToolResultBlock.class, name = "tool_result"),
+        @JsonSubTypes.Type(value = ContentBlock.ImageBlock.class, name = "image")
     })
-    public sealed interface ContentBlock permits ContentBlock.TextBlock, ContentBlock.ToolUseBlock, ContentBlock.ToolResultBlock {
+    public sealed interface ContentBlock permits ContentBlock.TextBlock, ContentBlock.ToolUseBlock, ContentBlock.ToolResultBlock, ContentBlock.ImageBlock {
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -57,6 +58,24 @@ public final class AnthropicDto {
             @JsonProperty("tool_use_id") String toolUseId,
             @JsonProperty("content") String content
         ) implements ContentBlock {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        record ImageBlock(
+            @JsonProperty("source") ImageSource source
+        ) implements ContentBlock {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        record ImageSource(
+            @JsonProperty("type") String type,
+            @JsonProperty("media_type") String mediaType,
+            @JsonProperty("data") String data
+        ) {
+            public static ImageSource base64(String mediaType, String data) {
+                return new ImageSource("base64", mediaType, data);
+            }
+        }
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)

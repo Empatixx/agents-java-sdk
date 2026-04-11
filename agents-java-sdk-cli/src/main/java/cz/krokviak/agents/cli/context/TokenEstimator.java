@@ -68,6 +68,7 @@ public final class TokenEstimator {
                 case InputItem.ToolResult m -> m.output() != null ? m.output().length() : 0;
                 case InputItem.SystemMessage m -> m.content() != null ? m.content().length() : 0;
                 case InputItem.CompactionMarker m -> m.summary() != null ? m.summary().length() : 0;
+                case InputItem.ImageContent img -> img.base64Data() != null ? img.base64Data().length() / 4 : 0;
             };
         }
         return chars;

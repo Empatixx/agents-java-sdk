@@ -91,6 +91,7 @@ public class OpenAIOfficalModel implements Model {
                         .role(EasyInputMessage.Role.SYSTEM)
                         .content(EasyInputMessage.Content.ofTextInput("[Conversation Summary]\n" + marker.summary()))
                         .build()));
+                case InputItem.ImageContent _ -> {}
             }
         }
         if (!input.isEmpty()) {
