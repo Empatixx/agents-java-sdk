@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.command.Commands;
-import cz.krokviak.agents.agent.engine.AgentRunner;
 import cz.krokviak.agents.cli.render.tui.CliApp;
 
 import java.io.BufferedReader;
@@ -17,14 +16,12 @@ public class Repl {
     private static final Logger log = LoggerFactory.getLogger(Repl.class);
     private final CliContext ctx;
     private final Commands commands;
-    private final AgentRunner runner;
     private final CliApp cliApp; // null when piped/non-TTY
     private volatile boolean runnerActive;
 
-    public Repl(CliContext ctx, Commands commands, AgentRunner runner, CliApp cliApp) {
+    public Repl(CliContext ctx, Commands commands, CliApp cliApp) {
         this.ctx = ctx;
         this.commands = commands;
-        this.runner = runner;
         this.cliApp = cliApp;
     }
 
@@ -110,7 +107,7 @@ public class Repl {
         try {
             runnerActive = true;
             if (cliApp != null) cliApp.setRunnerBusy(true);
-            runner.run(input);
+            ctx.agent().runTurn(cz.krokviak.agents.api.dto.RunTurnRequest.of(input)).join();
         } catch (Exception e) {
             ctx.output().printError(e.getMessage());
         } finally {

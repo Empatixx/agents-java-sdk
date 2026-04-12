@@ -55,11 +55,28 @@ public final class AgentServiceImpl implements AgentService {
         this.spawner = spawner;
     }
 
-    // -- Turn execution (delegated to AgentRunner in Phase 2; stubbed for now) --
-    @Override public CompletableFuture<RunTurnResult> runTurn(RunTurnRequest req) {
-        return CompletableFuture.failedFuture(new UnsupportedOperationException("runTurn wiring pending — Repl still invokes AgentRunner directly"));
+    private volatile cz.krokviak.agents.agent.engine.AgentRunner runner;
+    /** Plug in the main-turn AgentRunner so {@link #runTurn} is operational. */
+    public void setRunner(cz.krokviak.agents.agent.engine.AgentRunner runner) {
+        this.runner = runner;
     }
-    @Override public void cancelTurn() { /* cooperative cancellation flag lives on AgentRunner; wired in Phase 2 */ }
+
+    @Override public CompletableFuture<RunTurnResult> runTurn(RunTurnRequest req) {
+        if (runner == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("AgentRunner not installed"));
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            int before = ctx.history().size();
+            runner.run(req.userText());
+            return new RunTurnResult(
+                /*finalOutput*/ null,
+                /*turns*/ Math.max(0, ctx.history().size() - before),
+                ctx.costTracker().totalInputTokens(),
+                ctx.costTracker().totalOutputTokens(),
+                /*interrupted*/ false);
+        });
+    }
+    @Override public void cancelTurn() { /* cooperative cancellation hook — wire in Phase 3 */ }
 
     // -- Blocking-prompt async flow --
     @Override

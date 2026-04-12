@@ -257,6 +257,7 @@ public class CLI {
 
         // Run
         AgentRunner runner = new AgentRunner(ctx, toolDispatcher, config.maxTurns());
-        new Repl(ctx, commands, runner, cliApp).start();
+        agentService.setRunner(runner);
+        new Repl(ctx, commands, cliApp).start();
     }
 }
