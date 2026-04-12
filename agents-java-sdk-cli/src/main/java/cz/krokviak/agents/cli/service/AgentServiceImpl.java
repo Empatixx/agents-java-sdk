@@ -36,6 +36,12 @@ public final class AgentServiceImpl implements AgentService {
 
     public AgentServiceImpl(CliContext ctx) {
         this.ctx = ctx;
+        // Bridge TaskManager push-notifications onto the event bus.
+        ctx.taskManager().onNotification(n ->
+            ctx.eventBus().emit(new AgentEvent.TaskNotification(
+                n.taskId(), n.description(),
+                n.status() != null ? n.status().name() : "",
+                n.summary())));
     }
 
     /** Plug in the ToolDispatcher so {@link #availableTools()} can list registered tools. */
@@ -100,6 +106,7 @@ public final class AgentServiceImpl implements AgentService {
         return new HistorySnapshot(List.copyOf(ctx.history()), /* estimatedTokens wired in Phase 2 */ 0);
     }
     @Override public void clearHistory() { ctx.history().clear(); }
+    @Override public void appendHistoryItem(cz.krokviak.agents.runner.InputItem item) { ctx.history().add(item); }
     @Override public void undoLastTurn() {
         var h = ctx.history();
         synchronized (h) {

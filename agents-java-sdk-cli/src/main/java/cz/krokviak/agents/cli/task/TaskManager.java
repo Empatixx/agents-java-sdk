@@ -8,8 +8,14 @@ public class TaskManager {
     private final Map<String, TaskState> tasks = new ConcurrentHashMap<>();
     private final AtomicInteger counter = new AtomicInteger(0);
     private final List<TaskNotification> pendingNotifications = Collections.synchronizedList(new ArrayList<>());
+    private volatile java.util.function.Consumer<TaskNotification> onNotification;
 
     public record TaskNotification(String taskId, String description, TaskState.Status status, String summary) {}
+
+    /** Push-based subscriber invoked whenever a notification is added. */
+    public void onNotification(java.util.function.Consumer<TaskNotification> listener) {
+        this.onNotification = listener;
+    }
 
     public String nextId() { return "task-" + counter.incrementAndGet(); }
     public void register(TaskState task) { tasks.put(task.id(), task); }
@@ -21,7 +27,13 @@ public class TaskManager {
     }
     public List<TaskState> running() { return tasks.values().stream().filter(t -> t.status() == TaskState.Status.RUNNING).toList(); }
 
-    public void addNotification(TaskNotification n) { pendingNotifications.add(n); }
+    public void addNotification(TaskNotification n) {
+        pendingNotifications.add(n);
+        var listener = onNotification;
+        if (listener != null) {
+            try { listener.accept(n); } catch (Exception ignored) {}
+        }
+    }
     public List<TaskNotification> drainNotifications() {
         if (pendingNotifications.isEmpty()) return List.of();
         var copy = List.copyOf(pendingNotifications); pendingNotifications.clear(); return copy;

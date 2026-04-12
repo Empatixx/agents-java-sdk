@@ -50,34 +50,10 @@ public class Repl {
     }
 
     private void startNotificationWatcher() {
-        if (ctx.taskManager() == null) return;
-        Thread.ofVirtual().name("notification-watcher").start(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(500);
-                    if (runnerActive) continue; // runner handles its own notifications
-                    var notifications = ctx.taskManager().drainNotifications();
-                    for (var n : notifications) {
-                        String icon = switch (n.status()) {
-                            case COMPLETED -> "\u2713";
-                            case FAILED -> "\u2717";
-                            case KILLED -> "\u2298";
-                            default -> "\u25cf";
-                        };
-                        ctx.output().println("");
-                        ctx.output().println("  " + icon + " Agent " + n.description() + " " +
-                            n.status().name().toLowerCase());
-                        if (n.summary() != null && !n.summary().isBlank()) {
-                            String summary = n.summary().length() > 150
-                                ? n.summary().substring(0, 150) + "..." : n.summary();
-                            ctx.output().println("    " + summary);
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    break;
-                } catch (Exception ignored) {}
-            }
-        });
+        // No-op: TaskManager now pushes AgentEvent.TaskNotification onto the event bus
+        // as soon as they arrive; RenderEventListener handles rendering. Kept as a
+        // method for bootstrap symmetry in case an alternative frontend wants to
+        // attach lifecycle hooks here.
     }
 
     @FunctionalInterface
@@ -164,8 +140,8 @@ public class Repl {
 
     private cz.krokviak.agents.cli.paste.ImageHandler getImageHandler() {
         if (imageHandler == null) {
-            imageHandler = new cz.krokviak.agents.cli.paste.ImageHandler(
-                ctx.sessionId() != null ? ctx.sessionId() : "default");
+            String sid = ctx.agent().currentSessionId();
+            imageHandler = new cz.krokviak.agents.cli.paste.ImageHandler(sid != null ? sid : "default");
         }
         return imageHandler;
     }
@@ -177,7 +153,7 @@ public class Repl {
         if (imgHandler.isImagePath(input)) {
             try {
                 var img = imgHandler.processImagePath(input);
-                ctx.history().add(img);
+                ctx.agent().appendHistoryItem(img);
                 imageCounter++;
                 ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ImageAttached(
                     img.filePath(), imageCounter));
@@ -193,7 +169,7 @@ public class Repl {
             try {
                 var clipImg = imgHandler.tryClipboardImage();
                 if (clipImg != null) {
-                    ctx.history().add(clipImg);
+                    ctx.agent().appendHistoryItem(clipImg);
                     imageCounter++;
                     ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ImageAttached(
                         clipImg.filePath(), imageCounter));
@@ -208,7 +184,7 @@ public class Repl {
         if (pasteHandler.isPaste(input)) {
             var result = pasteHandler.savePaste(input);
             if (result != null) {
-                ctx.history().add(new cz.krokviak.agents.runner.InputItem.SystemMessage(
+                ctx.agent().appendHistoryItem(new cz.krokviak.agents.runner.InputItem.SystemMessage(
                     "<pasted-content path=\"" + result.filePath().toAbsolutePath() + "\">\n"
                     + result.content() + "\n</pasted-content>"));
                 ctx.output().println("  Pasted " + result.lineCount() + " lines saved");
@@ -221,7 +197,7 @@ public class Repl {
 
     private void loadSessionHistory() {
         String sid = ctx.agent().currentSessionId();
-        if (ctx.session() == null || sid == null) return;
+        if (sid == null) return;
         try {
             ctx.agent().loadSession(sid).join();
             int n = ctx.agent().history().size();

@@ -51,6 +51,12 @@ public interface AgentService {
     void clearHistory();
     void undoLastTurn();
     CompletableFuture<Void> compactHistory();
+    /**
+     * Append a pre-turn context item to history (e.g. an attached image,
+     * pasted reference, or system breadcrumb). Called by frontends before
+     * {@link #runTurn} so the next turn sees the context.
+     */
+    void appendHistoryItem(cz.krokviak.agents.runner.InputItem item);
 
     // -- Sessions --
     List<SessionInfo> listSessions();
