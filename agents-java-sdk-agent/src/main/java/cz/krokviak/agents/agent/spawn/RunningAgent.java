@@ -1,6 +1,6 @@
-package cz.krokviak.agents.cli.agent;
+package cz.krokviak.agents.agent.spawn;
 
-import cz.krokviak.agents.cli.render.AgentStatus;
+import cz.krokviak.agents.agent.spawn.AgentStatus;
 
 import java.time.Duration;
 import java.time.Instant;

@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.tool;
 
 import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.plan.PlanStore;
+import cz.krokviak.agents.agent.plan.PlanStore;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 

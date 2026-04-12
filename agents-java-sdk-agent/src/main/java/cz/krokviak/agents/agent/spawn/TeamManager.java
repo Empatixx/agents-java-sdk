@@ -1,6 +1,6 @@
-package cz.krokviak.agents.cli.agent;
+package cz.krokviak.agents.agent.spawn;
 
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskManager;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;

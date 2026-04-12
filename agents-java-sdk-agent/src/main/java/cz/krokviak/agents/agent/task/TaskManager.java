@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.task;
+package cz.krokviak.agents.agent.task;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

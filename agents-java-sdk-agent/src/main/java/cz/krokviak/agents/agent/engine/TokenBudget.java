@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
 public class TokenBudget {
     private int maxBudget;

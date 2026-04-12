@@ -1,12 +1,17 @@
 package cz.krokviak.agents.cli.agent;
 
+import cz.krokviak.agents.agent.spawn.AgentRegistry;
+import cz.krokviak.agents.agent.spawn.RunningAgent;
+import cz.krokviak.agents.agent.spawn.ProgressTracker;
+import cz.krokviak.agents.agent.spawn.AgentStatus;
+
 import cz.krokviak.agents.api.event.AgentEvent;
 
 import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.mailbox.MailboxManager;
-import cz.krokviak.agents.cli.render.AgentStatus;
-import cz.krokviak.agents.cli.task.TaskManager;
-import cz.krokviak.agents.cli.task.TaskState;
+import cz.krokviak.agents.agent.mailbox.MailboxManager;
+import cz.krokviak.agents.agent.spawn.AgentStatus;
+import cz.krokviak.agents.agent.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskState;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.tool.ExecutableTool;

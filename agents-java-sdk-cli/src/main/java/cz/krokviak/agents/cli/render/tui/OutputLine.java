@@ -1,6 +1,6 @@
 package cz.krokviak.agents.cli.render.tui;
 
-import cz.krokviak.agents.cli.render.AgentStatus;
+import cz.krokviak.agents.agent.spawn.AgentStatus;
 import cz.krokviak.agents.cli.render.ToolCallStatus;
 import dev.tamboui.style.Color;
 import dev.tamboui.toolkit.element.StyledElement;

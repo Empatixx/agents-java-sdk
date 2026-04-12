@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.agent;
+package cz.krokviak.agents.agent.spawn;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

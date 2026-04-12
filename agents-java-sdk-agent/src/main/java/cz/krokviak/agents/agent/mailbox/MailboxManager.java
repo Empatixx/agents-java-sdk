@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.mailbox;
+package cz.krokviak.agents.agent.mailbox;
 
 import java.time.Instant;
 import java.util.ArrayList;

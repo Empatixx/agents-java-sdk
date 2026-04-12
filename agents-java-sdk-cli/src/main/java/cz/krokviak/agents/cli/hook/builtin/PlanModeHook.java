@@ -4,7 +4,7 @@ import cz.krokviak.agents.api.hook.HookPhase;
 import cz.krokviak.agents.api.hook.HookResult;
 
 import cz.krokviak.agents.cli.hook.*;
-import cz.krokviak.agents.cli.plan.PlanStore;
+import cz.krokviak.agents.agent.plan.PlanStore;
 import cz.krokviak.agents.cli.tool.ToolClassifier;
 
 import java.util.Set;

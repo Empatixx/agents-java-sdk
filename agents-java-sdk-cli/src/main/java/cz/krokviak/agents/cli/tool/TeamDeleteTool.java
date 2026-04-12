@@ -1,6 +1,6 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.agent.TeamManager;
+import cz.krokviak.agents.agent.spawn.TeamManager;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 

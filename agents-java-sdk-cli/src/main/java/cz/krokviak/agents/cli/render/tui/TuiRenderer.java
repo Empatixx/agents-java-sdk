@@ -1,6 +1,6 @@
 package cz.krokviak.agents.cli.render.tui;
 
-import cz.krokviak.agents.cli.render.AgentStatus;
+import cz.krokviak.agents.agent.spawn.AgentStatus;
 import cz.krokviak.agents.cli.render.BoxStyle;
 import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.render.ToolCallStatus;

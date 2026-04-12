@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.task.TaskManager;
-import cz.krokviak.agents.cli.task.TaskState;
+import cz.krokviak.agents.agent.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskState;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 

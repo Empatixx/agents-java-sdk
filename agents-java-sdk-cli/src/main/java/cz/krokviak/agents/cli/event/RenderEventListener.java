@@ -31,21 +31,21 @@ public final class RenderEventListener {
             case AgentEvent.AgentStarted e -> {
                 renderer.setCurrentAgent(e.agentId());
                 renderer.renderAgentStatus(e.agentId(),
-                    cz.krokviak.agents.cli.render.AgentStatus.RUNNING, e.description());
+                    cz.krokviak.agents.agent.spawn.AgentStatus.RUNNING, e.description());
             }
             case AgentEvent.AgentCompleted e -> {
                 renderer.renderAgentStatus(e.agentId(),
-                    cz.krokviak.agents.cli.render.AgentStatus.COMPLETED, "done");
+                    cz.krokviak.agents.agent.spawn.AgentStatus.COMPLETED, "done");
                 renderer.clearCurrentAgent();
             }
             case AgentEvent.AgentFailed e -> {
                 renderer.renderAgentStatus(e.agentId(),
-                    cz.krokviak.agents.cli.render.AgentStatus.FAILED, e.error());
+                    cz.krokviak.agents.agent.spawn.AgentStatus.FAILED, e.error());
                 renderer.clearCurrentAgent();
             }
             case AgentEvent.AgentProgress e ->
                 renderer.renderAgentStatus(e.agentId(),
-                    cz.krokviak.agents.cli.render.AgentStatus.RUNNING, e.detail());
+                    cz.krokviak.agents.agent.spawn.AgentStatus.RUNNING, e.detail());
             case AgentEvent.ResponseDelta e ->
                 renderer.printTextDelta(e.text());
             case AgentEvent.ResponseDone _ -> renderer.println("");

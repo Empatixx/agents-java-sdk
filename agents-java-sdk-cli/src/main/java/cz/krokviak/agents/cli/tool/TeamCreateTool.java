@@ -1,9 +1,9 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.agent.Team;
-import cz.krokviak.agents.cli.agent.TeamManager;
-import cz.krokviak.agents.cli.task.TaskManager;
-import cz.krokviak.agents.cli.task.TaskState;
+import cz.krokviak.agents.agent.spawn.Team;
+import cz.krokviak.agents.agent.spawn.TeamManager;
+import cz.krokviak.agents.agent.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskState;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 

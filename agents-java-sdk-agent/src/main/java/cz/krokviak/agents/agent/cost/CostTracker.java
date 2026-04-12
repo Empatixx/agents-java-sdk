@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.cost;
+package cz.krokviak.agents.agent.cost;
 
 import java.util.Map;
 

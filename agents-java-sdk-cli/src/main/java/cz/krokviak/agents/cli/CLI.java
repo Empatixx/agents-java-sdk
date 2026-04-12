@@ -2,8 +2,8 @@ package cz.krokviak.agents.cli;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import cz.krokviak.agents.cli.agent.AgentRegistry;
-import cz.krokviak.agents.cli.agent.TeamManager;
+import cz.krokviak.agents.agent.spawn.AgentRegistry;
+import cz.krokviak.agents.agent.spawn.TeamManager;
 import cz.krokviak.agents.cli.command.Commands;
 import cz.krokviak.agents.cli.command.builtin.*;
 import cz.krokviak.agents.cli.cron.CronScheduler;
@@ -14,14 +14,14 @@ import cz.krokviak.agents.cli.hook.Hooks;
 import cz.krokviak.agents.cli.hook.builtin.GuardrailHook;
 import cz.krokviak.agents.cli.hook.builtin.PermissionHook;
 import cz.krokviak.agents.cli.hook.builtin.PlanModeHook;
-import cz.krokviak.agents.cli.mailbox.MailboxManager;
+import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.memory.MemoryLoader;
 import cz.krokviak.agents.cli.memory.MemoryStore;
 import cz.krokviak.agents.cli.permission.PermissionManager;
 import cz.krokviak.agents.cli.plugin.PluginContextImpl;
 import cz.krokviak.agents.cli.plugin.Plugins;
 import cz.krokviak.agents.cli.repl.Repl;
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.cli.render.PlainRenderer;
 import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.skill.SkillLoader;
@@ -159,7 +159,7 @@ public class CLI {
 
         // Hooks (plan mode → guardrail → permission, in order)
         Hooks hooks = new Hooks();
-        var planStore = new cz.krokviak.agents.cli.plan.PlanStore();
+        var planStore = new cz.krokviak.agents.agent.plan.PlanStore();
         ctx.setPlanStore(planStore);
         hooks.register(new PlanModeHook(planStore));
         hooks.register(new GuardrailHook());

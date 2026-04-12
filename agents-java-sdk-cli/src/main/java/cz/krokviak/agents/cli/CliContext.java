@@ -2,12 +2,12 @@ package cz.krokviak.agents.cli;
 
 import cz.krokviak.agents.cli.context.ContextCompactor;
 import cz.krokviak.agents.cli.context.TokenEstimator;
-import cz.krokviak.agents.cli.cost.CostTracker;
+import cz.krokviak.agents.agent.cost.CostTracker;
 import cz.krokviak.agents.cli.engine.CompactionPipeline;
-import cz.krokviak.agents.cli.mailbox.MailboxManager;
+import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.permission.PermissionManager;
 import cz.krokviak.agents.cli.render.Renderer;
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.model.AnthropicModel;
 import cz.krokviak.agents.model.Model;
 import cz.krokviak.agents.model.ModelSettings;
@@ -100,9 +100,9 @@ public final class CliContext {
     }
     public void onPlanModeChange(Runnable listener) { this.planModeListener.set(listener); }
 
-    private cz.krokviak.agents.cli.plan.PlanStore planStore;
-    public void setPlanStore(cz.krokviak.agents.cli.plan.PlanStore store) { this.planStore = store; }
-    public cz.krokviak.agents.cli.plan.PlanStore planStore() { return planStore; }
+    private cz.krokviak.agents.agent.plan.PlanStore planStore;
+    public void setPlanStore(cz.krokviak.agents.agent.plan.PlanStore store) { this.planStore = store; }
+    public cz.krokviak.agents.agent.plan.PlanStore planStore() { return planStore; }
 
     private cz.krokviak.agents.cli.render.PromptRenderer promptRenderer;
     public void setPromptRenderer(cz.krokviak.agents.cli.render.PromptRenderer r) { this.promptRenderer = r; }

@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.plan;
+package cz.krokviak.agents.agent.plan;
 
 public final class PlanPrompts {
     private PlanPrompts() {}

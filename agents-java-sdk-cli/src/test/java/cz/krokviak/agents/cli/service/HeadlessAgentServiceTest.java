@@ -5,9 +5,9 @@ import cz.krokviak.agents.api.dto.PermissionDecision;
 import cz.krokviak.agents.api.event.AgentEvent;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.context.ContextCompactor;
-import cz.krokviak.agents.cli.mailbox.MailboxManager;
+import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.permission.PermissionManager;
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.cli.test.FakeRenderer;
 import org.junit.jupiter.api.Test;
 

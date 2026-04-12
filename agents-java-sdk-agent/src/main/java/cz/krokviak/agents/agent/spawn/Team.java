@@ -1,7 +1,7 @@
-package cz.krokviak.agents.cli.agent;
+package cz.krokviak.agents.agent.spawn;
 
-import cz.krokviak.agents.cli.render.AgentStatus;
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.agent.spawn.AgentStatus;
+import cz.krokviak.agents.agent.task.TaskManager;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

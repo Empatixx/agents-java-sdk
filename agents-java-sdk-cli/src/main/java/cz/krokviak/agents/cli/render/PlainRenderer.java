@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.render;
 
+import cz.krokviak.agents.agent.spawn.AgentStatus;
+
 import java.util.Map;
 
 /**

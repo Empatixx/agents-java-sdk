@@ -172,7 +172,7 @@ public final class AgentServiceImpl implements AgentService {
             ? new cz.krokviak.agents.model.AnthropicModel(ctx.apiKey(), ctx.baseUrl(), req.modelOverride())
             : ctx.model();
         int maxTurns = req.maxTurns() != null ? Math.min(req.maxTurns(), 100) : 15;
-        var progress = new cz.krokviak.agents.cli.agent.ProgressTracker();
+        var progress = new cz.krokviak.agents.agent.spawn.ProgressTracker();
         if (req.background()) {
             return CompletableFuture.supplyAsync(() -> {
                 var ra = spawner.spawnBackground(req.agentName(), req.prompt(), tools, model, progress, maxTurns);
@@ -194,12 +194,12 @@ public final class AgentServiceImpl implements AgentService {
     @Override public String createTask(String description, String initialStatus) {
         var tm = ctx.taskManager();
         String id = tm.nextId();
-        cz.krokviak.agents.cli.task.TaskState.Status status = switch (
+        cz.krokviak.agents.agent.task.TaskState.Status status = switch (
             initialStatus == null ? "pending" : initialStatus.toLowerCase()) {
-            case "running", "in_progress" -> cz.krokviak.agents.cli.task.TaskState.Status.RUNNING;
-            default -> cz.krokviak.agents.cli.task.TaskState.Status.PENDING;
+            case "running", "in_progress" -> cz.krokviak.agents.agent.task.TaskState.Status.RUNNING;
+            default -> cz.krokviak.agents.agent.task.TaskState.Status.PENDING;
         };
-        tm.register(new cz.krokviak.agents.cli.task.TaskState(id, description, status));
+        tm.register(new cz.krokviak.agents.agent.task.TaskState(id, description, status));
         return id;
     }
     @Override public void updateTask(String taskId, String newStatus, String summary) {
@@ -216,14 +216,14 @@ public final class AgentServiceImpl implements AgentService {
     }
     @Override public void stopTask(String taskId) { ctx.taskManager().killTask(taskId); }
 
-    private TaskInfo toInfo(cz.krokviak.agents.cli.task.TaskState t) {
+    private TaskInfo toInfo(cz.krokviak.agents.agent.task.TaskState t) {
         return new TaskInfo(t.id(), t.description(), String.valueOf(t.status()),
             t.result() != null ? t.result() : t.error(), 0L, 0L);
     }
-    private volatile cz.krokviak.agents.cli.agent.AgentRegistry agentRegistry;
-    private volatile cz.krokviak.agents.cli.agent.TeamManager teamManager;
-    public void setAgentRegistry(cz.krokviak.agents.cli.agent.AgentRegistry r) { this.agentRegistry = r; }
-    public void setTeamManager(cz.krokviak.agents.cli.agent.TeamManager m) { this.teamManager = m; }
+    private volatile cz.krokviak.agents.agent.spawn.AgentRegistry agentRegistry;
+    private volatile cz.krokviak.agents.agent.spawn.TeamManager teamManager;
+    public void setAgentRegistry(cz.krokviak.agents.agent.spawn.AgentRegistry r) { this.agentRegistry = r; }
+    public void setTeamManager(cz.krokviak.agents.agent.spawn.TeamManager m) { this.teamManager = m; }
 
     @Override public List<AgentInfo> listRunningAgents() {
         if (agentRegistry == null) return List.of();

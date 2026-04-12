@@ -1,12 +1,14 @@
 package cz.krokviak.agents.cli.engine;
 
+import cz.krokviak.agents.agent.engine.TokenBudget;
+
 import cz.krokviak.agents.api.event.AgentEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.mailbox.MailboxManager;
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.agent.mailbox.MailboxManager;
+import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.exception.ContextTooLongException;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.runner.InputItem;
@@ -53,7 +55,7 @@ public class AgentRunner {
                 if (ctx.isPlanMode() && ctx.planStore() != null) {
                     String planPath = ctx.planStore().currentPlanPath();
                     if (planPath == null) planPath = "~/.krok/plans/<plan>.md";
-                    systemPrompt += "\n\n" + cz.krokviak.agents.cli.plan.PlanPrompts.planModeInstructions(planPath);
+                    systemPrompt += "\n\n" + cz.krokviak.agents.agent.plan.PlanPrompts.planModeInstructions(planPath);
                 }
 
                 LlmContext llmCtx = new LlmContext(systemPrompt, List.copyOf(ctx.history()),

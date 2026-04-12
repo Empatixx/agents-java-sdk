@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.test;
 
+import cz.krokviak.agents.agent.spawn.AgentStatus;
+
 import cz.krokviak.agents.cli.render.*;
 
 import java.util.ArrayList;

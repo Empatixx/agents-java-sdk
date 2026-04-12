@@ -1,15 +1,15 @@
 package cz.krokviak.agents.cli;
 
-import cz.krokviak.agents.cli.agent.AgentRegistry;
-import cz.krokviak.agents.cli.agent.TeamManager;
+import cz.krokviak.agents.agent.spawn.AgentRegistry;
+import cz.krokviak.agents.agent.spawn.TeamManager;
 import cz.krokviak.agents.cli.cron.CronScheduler;
 import cz.krokviak.agents.cli.engine.ToolDispatcher;
 import cz.krokviak.agents.cli.hook.Hooks;
-import cz.krokviak.agents.cli.mailbox.MailboxManager;
+import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.memory.MemoryStore;
-import cz.krokviak.agents.cli.plan.PlanStore;
+import cz.krokviak.agents.agent.plan.PlanStore;
 import cz.krokviak.agents.cli.skill.SkillRegistry;
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.cli.tool.*;
 import cz.krokviak.agents.model.Model;
 import cz.krokviak.agents.tool.ExecutableTool;
