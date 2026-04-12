@@ -5,7 +5,7 @@ public class ClearCommand implements Command {
     @Override public String name() { return "clear"; }
     @Override public String description() { return "Clear conversation history"; }
     @Override public void execute(String args, CliContext ctx) {
-        ctx.history().clear();
+        ctx.agent().clearHistory();
         ctx.output().println("Conversation history cleared.");
     }
 }

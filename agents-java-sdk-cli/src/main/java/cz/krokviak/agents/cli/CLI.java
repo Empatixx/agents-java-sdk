@@ -136,11 +136,16 @@ public class CLI {
         new cz.krokviak.agents.cli.event.RenderEventListener(output).register(ctx.eventBus());
 
         // Install UI-agnostic agent facade (Phase 1: delegates to existing managers via CliContext)
-        ctx.setAgent(new cz.krokviak.agents.cli.service.AgentServiceImpl(ctx));
+        var agentService = new cz.krokviak.agents.cli.service.AgentServiceImpl(ctx);
+        ctx.setAgent(agentService);
+        permissionManager.setAgentService(agentService);
 
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {
             ctx.setPromptRenderer(tr);
+            // Install the blocking-prompt bridge so PermissionRequested/QuestionRequested
+            // events drive TUI dialogs on virtual threads and resolve the agent-side futures.
+            new cz.krokviak.agents.cli.service.PermissionDialogBridge(agentService, tr).install();
         }
 
         // Sync plan mode state to CliController for TUI display

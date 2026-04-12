@@ -6,10 +6,10 @@ public class ModelCommand implements Command {
     @Override public String description() { return "Show or switch model"; }
     @Override public void execute(String args, CliContext ctx) {
         if (args == null || args.isBlank()) {
-            ctx.output().println("Current model: " + ctx.modelId());
+            ctx.output().println("Current model: " + ctx.agent().currentModel().id());
         } else {
-            ctx.switchModel(args.trim());
-            ctx.output().println("Switched to model: " + ctx.modelId());
+            ctx.agent().switchModel(args.trim());
+            ctx.output().println("Switched to model: " + ctx.agent().currentModel().id());
         }
     }
 }
