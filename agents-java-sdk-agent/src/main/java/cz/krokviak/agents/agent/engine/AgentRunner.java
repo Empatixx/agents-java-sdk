@@ -297,15 +297,9 @@ public class AgentRunner {
         ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.BudgetExceeded(
             tokenBudget.totalUsed(), tokenBudget.maxBudget()));
 
-        int selected;
-        try {
-            selected = ctx.agent().requestQuestion(header, java.util.List.of("Yes, increase 2x", "No, stop")).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
-        } catch (java.util.concurrent.ExecutionException e) {
-            return false;
-        }
+        int selected = cz.krokviak.agents.util.FutureTimeouts.awaitUserPrompt(
+            ctx.agent().requestQuestion(header, java.util.List.of("Yes, increase 2x", "No, stop")),
+            () -> 1);  // timeout → "No, stop"
 
         if (selected == 0) {
             tokenBudget.extend(2);

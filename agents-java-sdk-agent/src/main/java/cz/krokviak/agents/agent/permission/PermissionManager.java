@@ -57,17 +57,10 @@ public class PermissionManager {
             "No"
         );
         if (agentService == null) return PermissionResult.DENY;
-        try {
-            PermissionDecision decision = agentService
-                .requestPermission(toolName, args, /*toolCallId*/ null, options)
-                .get();
-            return applyDecision(decision, toolName);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return PermissionResult.DENY;
-        } catch (ExecutionException e) {
-            return PermissionResult.DENY;
-        }
+        PermissionDecision decision = cz.krokviak.agents.util.FutureTimeouts.awaitUserPrompt(
+            agentService.requestPermission(toolName, args, /*toolCallId*/ null, options),
+            () -> PermissionDecision.DENY);
+        return applyDecision(decision, toolName);
     }
 
     private PermissionResult applyDecision(PermissionDecision decision, String toolName) {

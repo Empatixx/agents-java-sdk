@@ -93,14 +93,9 @@ public class AskUserQuestionTool implements ExecutableTool {
     }
 
     private int awaitAnswer(String header, List<String> options) {
-        try {
-            return agent.requestQuestion(header, options).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return -1;
-        } catch (ExecutionException e) {
-            return -1;
-        }
+        return cz.krokviak.agents.util.FutureTimeouts.awaitUserPrompt(
+            agent.requestQuestion(header, options),
+            () -> -1);
     }
 
     private List<Question> parseQuestions(ToolArgs args) {

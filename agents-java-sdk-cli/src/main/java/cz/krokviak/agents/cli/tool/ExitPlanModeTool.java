@@ -46,22 +46,14 @@ public class ExitPlanModeTool implements ExecutableTool {
         }
         ctx.output().println("╰" + "─".repeat(50));
 
-        // Route approval through the UI-agnostic question flow.
-        int selected;
-        try {
-            selected = ctx.agent().requestQuestion("\ud83d\udccb " + slug, java.util.List.of(
+        // Route approval through the UI-agnostic question flow (5-min timeout default).
+        int selected = cz.krokviak.agents.util.FutureTimeouts.awaitUserPrompt(
+            ctx.agent().requestQuestion("\ud83d\udccb " + slug, java.util.List.of(
                 "Approve — implement the plan",
                 "Reject — provide feedback to refine",
                 "Cancel — discard plan"
-            )).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            ctx.agent().setPlanMode(false);
-            return ToolOutput.text("Plan approval interrupted.");
-        } catch (java.util.concurrent.ExecutionException e) {
-            ctx.agent().setPlanMode(false);
-            return ToolOutput.text("Plan approval failed: " + e.getMessage());
-        }
+            )),
+            () -> 2);  // timeout → Cancel
 
         return switch (selected) {
             case 0 -> {
