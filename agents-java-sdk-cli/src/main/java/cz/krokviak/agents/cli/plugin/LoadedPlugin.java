@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.plugin;
 
 import cz.krokviak.agents.cli.command.Command;
-import cz.krokviak.agents.cli.hook.Hook;
+import cz.krokviak.agents.agent.hook.Hook;
 import cz.krokviak.agents.cli.skill.Skill;
 
 import java.nio.file.Path;

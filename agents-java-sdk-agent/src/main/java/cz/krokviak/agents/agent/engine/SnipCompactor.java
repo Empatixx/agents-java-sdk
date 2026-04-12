@@ -1,6 +1,6 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
-import cz.krokviak.agents.cli.context.TokenEstimator;
+import cz.krokviak.agents.agent.context.TokenEstimator;
 import cz.krokviak.agents.runner.InputItem;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -10,7 +10,7 @@ public class SnipCompactor {
     private final int snipThreshold;
 
     public SnipCompactor(int snipThreshold) { this.snipThreshold = snipThreshold; }
-    public SnipCompactor() { this(cz.krokviak.agents.cli.CliDefaults.SNIP_COMPACTOR_THRESHOLD); }
+    public SnipCompactor() { this(cz.krokviak.agents.agent.AgentDefaults.SNIP_COMPACTOR_THRESHOLD); }
 
     public List<InputItem> snipIfNeeded(List<InputItem> history) {
         int totalTokens = TokenEstimator.estimate(history);

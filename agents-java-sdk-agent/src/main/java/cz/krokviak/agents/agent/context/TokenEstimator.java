@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.context;
+package cz.krokviak.agents.agent.context;
 
 import cz.krokviak.agents.runner.InputItem;
 import java.util.List;

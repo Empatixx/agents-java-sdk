@@ -1,8 +1,8 @@
-package cz.krokviak.agents.cli.context;
+package cz.krokviak.agents.agent.context;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import cz.krokviak.agents.cli.CliDefaults;
+import cz.krokviak.agents.agent.AgentDefaults;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.tool.ToolDefinition;
@@ -24,7 +24,7 @@ public class ContextCompactor {
     }
 
     public ContextCompactor(Model model) {
-        this(model, CliDefaults.COMPACTION_LAYER3_THRESHOLD, CliDefaults.COMPACTION_TARGET_TOKENS);
+        this(model, AgentDefaults.COMPACTION_LAYER3_THRESHOLD, AgentDefaults.COMPACTION_TARGET_TOKENS);
     }
 
     public List<InputItem> compactIfNeeded(List<InputItem> history, String systemPrompt) {
@@ -66,9 +66,9 @@ public class ContextCompactor {
             LlmContext ctx = new LlmContext(
                 "You are a conversation summarizer. Output only the summary.",
                 List.of(new InputItem.UserMessage(summaryPrompt)),
-                List.of(), null, ModelSettings.builder().maxTokens(CliDefaults.COMPACTION_SUMMARY_MAX_TOKENS).build()
+                List.of(), null, ModelSettings.builder().maxTokens(AgentDefaults.COMPACTION_SUMMARY_MAX_TOKENS).build()
             );
-            ModelResponse response = model.call(ctx, ModelSettings.builder().maxTokens(CliDefaults.COMPACTION_SUMMARY_MAX_TOKENS).build());
+            ModelResponse response = model.call(ctx, ModelSettings.builder().maxTokens(AgentDefaults.COMPACTION_SUMMARY_MAX_TOKENS).build());
 
             String summary = "";
             for (var output : response.output()) {

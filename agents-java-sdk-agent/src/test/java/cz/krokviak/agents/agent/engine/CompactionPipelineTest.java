@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
 import cz.krokviak.agents.runner.InputItem;
 import org.junit.jupiter.api.Test;

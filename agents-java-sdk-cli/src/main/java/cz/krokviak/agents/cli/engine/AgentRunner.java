@@ -118,7 +118,7 @@ public class AgentRunner {
                 if (resp != null && resp.usage() != null) {
                     ctx.costTracker().record(ctx.modelId(), resp.usage().inputTokens(), resp.usage().outputTokens());
                     tokenBudget.recordTurn(resp.usage().inputTokens(), resp.usage().outputTokens());
-                    int charCount = cz.krokviak.agents.cli.context.TokenEstimator.countChars(ctx.history());
+                    int charCount = cz.krokviak.agents.agent.context.TokenEstimator.countChars(ctx.history());
                     ctx.tokenEstimator().calibrate(resp.usage().inputTokens(), charCount);
                 }
 

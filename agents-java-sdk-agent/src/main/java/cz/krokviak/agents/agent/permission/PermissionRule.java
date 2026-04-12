@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.permission;
+package cz.krokviak.agents.agent.permission;
 
 import java.util.regex.Pattern;
 

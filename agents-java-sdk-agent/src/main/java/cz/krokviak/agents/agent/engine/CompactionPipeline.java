@@ -1,7 +1,7 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
-import cz.krokviak.agents.cli.context.ContextCompactor;
-import cz.krokviak.agents.cli.context.TokenEstimator;
+import cz.krokviak.agents.agent.context.ContextCompactor;
+import cz.krokviak.agents.agent.context.TokenEstimator;
 import cz.krokviak.agents.runner.InputItem;
 import java.util.List;
 
@@ -16,9 +16,9 @@ public class CompactionPipeline {
 
     public CompactionPipeline(ContextCompactor autoCompactor) {
         this(new SnipCompactor(), new MicroCompactor(), autoCompactor,
-            cz.krokviak.agents.cli.CliDefaults.COMPACTION_LAYER1_THRESHOLD,
-            cz.krokviak.agents.cli.CliDefaults.COMPACTION_LAYER2_THRESHOLD,
-            cz.krokviak.agents.cli.CliDefaults.COMPACTION_LAYER3_THRESHOLD);
+            cz.krokviak.agents.agent.AgentDefaults.COMPACTION_LAYER1_THRESHOLD,
+            cz.krokviak.agents.agent.AgentDefaults.COMPACTION_LAYER2_THRESHOLD,
+            cz.krokviak.agents.agent.AgentDefaults.COMPACTION_LAYER3_THRESHOLD);
     }
 
     public CompactionPipeline(SnipCompactor snip, MicroCompactor micro, ContextCompactor auto,

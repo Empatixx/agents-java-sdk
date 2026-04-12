@@ -1,11 +1,11 @@
-package cz.krokviak.agents.cli.hook.builtin;
+package cz.krokviak.agents.agent.hook.builtin;
 
 import cz.krokviak.agents.api.hook.HookPhase;
 import cz.krokviak.agents.api.hook.HookResult;
 
-import cz.krokviak.agents.cli.hook.*;
+import cz.krokviak.agents.agent.hook.*;
 import cz.krokviak.agents.agent.plan.PlanStore;
-import cz.krokviak.agents.cli.tool.ToolClassifier;
+import cz.krokviak.agents.agent.tool.ToolClassifier;
 
 import java.util.Set;
 
@@ -29,7 +29,7 @@ public class PlanModeHook implements Hook {
 
     @Override
     public HookResult execute(ToolUseEvent event) {
-        if (!event.ctx().isPlanMode()) return new HookResult.Proceed();
+        if (!event.agent().isPlanMode()) return new HookResult.Proceed();
         if (ToolClassifier.isReadOnly(event.toolName())) return new HookResult.Proceed();
         if (ALWAYS_ALLOWED.contains(event.toolName())) return new HookResult.Proceed();
 

@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.tool;
+package cz.krokviak.agents.agent.tool;
 
 import java.util.Set;
 

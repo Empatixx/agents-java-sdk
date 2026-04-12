@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
 import cz.krokviak.agents.runner.InputItem;
 import java.util.ArrayList;
@@ -8,7 +8,7 @@ public class MicroCompactor {
     private final int keepRecentToolResults;
 
     public MicroCompactor(int keepRecentToolResults) { this.keepRecentToolResults = keepRecentToolResults; }
-    public MicroCompactor() { this(cz.krokviak.agents.cli.CliDefaults.MICRO_COMPACTOR_KEEP_RECENT); }
+    public MicroCompactor() { this(cz.krokviak.agents.agent.AgentDefaults.MICRO_COMPACTOR_KEEP_RECENT); }
 
     public List<InputItem> compact(List<InputItem> history) {
         int toolResultCount = 0;

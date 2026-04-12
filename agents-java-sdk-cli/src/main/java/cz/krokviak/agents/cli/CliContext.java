@@ -1,11 +1,11 @@
 package cz.krokviak.agents.cli;
 
-import cz.krokviak.agents.cli.context.ContextCompactor;
-import cz.krokviak.agents.cli.context.TokenEstimator;
+import cz.krokviak.agents.agent.context.ContextCompactor;
+import cz.krokviak.agents.agent.context.TokenEstimator;
 import cz.krokviak.agents.agent.cost.CostTracker;
-import cz.krokviak.agents.cli.engine.CompactionPipeline;
+import cz.krokviak.agents.agent.engine.CompactionPipeline;
 import cz.krokviak.agents.agent.mailbox.MailboxManager;
-import cz.krokviak.agents.cli.permission.PermissionManager;
+import cz.krokviak.agents.agent.permission.PermissionManager;
 import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.model.AnthropicModel;

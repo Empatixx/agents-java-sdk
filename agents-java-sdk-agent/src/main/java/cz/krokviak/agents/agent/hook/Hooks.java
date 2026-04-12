@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.hook;
+package cz.krokviak.agents.agent.hook;
 
 import cz.krokviak.agents.api.hook.HookPhase;
 import cz.krokviak.agents.api.hook.HookResult;

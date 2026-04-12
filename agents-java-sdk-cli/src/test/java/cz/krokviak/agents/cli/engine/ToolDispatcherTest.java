@@ -4,7 +4,7 @@ import cz.krokviak.agents.api.event.AgentEvent;
 
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.event.CliEventBus;
-import cz.krokviak.agents.cli.hook.Hooks;
+import cz.krokviak.agents.agent.hook.Hooks;
 import cz.krokviak.agents.cli.test.FakeRenderer;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.runner.InputItem;

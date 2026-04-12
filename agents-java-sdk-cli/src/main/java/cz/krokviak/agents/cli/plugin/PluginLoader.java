@@ -7,9 +7,9 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
-import cz.krokviak.agents.cli.hook.Hook;
+import cz.krokviak.agents.agent.hook.Hook;
 import cz.krokviak.agents.api.hook.HookResult;
-import cz.krokviak.agents.cli.hook.ToolUseEvent;
+import cz.krokviak.agents.agent.hook.ToolUseEvent;
 import cz.krokviak.agents.cli.skill.Skill;
 import cz.krokviak.agents.cli.skill.SkillLoader;
 

@@ -4,7 +4,7 @@ import cz.krokviak.agents.agent.spawn.AgentRegistry;
 import cz.krokviak.agents.agent.spawn.TeamManager;
 import cz.krokviak.agents.cli.cron.CronScheduler;
 import cz.krokviak.agents.cli.engine.ToolDispatcher;
-import cz.krokviak.agents.cli.hook.Hooks;
+import cz.krokviak.agents.agent.hook.Hooks;
 import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.memory.MemoryStore;
 import cz.krokviak.agents.agent.plan.PlanStore;

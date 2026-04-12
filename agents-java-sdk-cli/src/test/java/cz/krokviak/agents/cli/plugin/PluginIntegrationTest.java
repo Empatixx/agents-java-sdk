@@ -4,9 +4,9 @@ import cz.krokviak.agents.api.hook.HookPhase;
 
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.command.Commands;
-import cz.krokviak.agents.cli.hook.Hook;
-import cz.krokviak.agents.cli.hook.Hooks;
-import cz.krokviak.agents.cli.hook.ToolUseEvent;
+import cz.krokviak.agents.agent.hook.Hook;
+import cz.krokviak.agents.agent.hook.Hooks;
+import cz.krokviak.agents.agent.hook.ToolUseEvent;
 import cz.krokviak.agents.cli.skill.Skill;
 import cz.krokviak.agents.cli.skill.SkillRegistry;
 import org.junit.jupiter.api.BeforeEach;

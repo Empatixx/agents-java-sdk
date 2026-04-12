@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.command.builtin;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
-import cz.krokviak.agents.cli.tool.ToolClassifier;
+import cz.krokviak.agents.agent.tool.ToolClassifier;
 public class ToolsCommand implements Command {
     @Override public String name() { return "tools"; }
     @Override public String description() { return "List available tools"; }

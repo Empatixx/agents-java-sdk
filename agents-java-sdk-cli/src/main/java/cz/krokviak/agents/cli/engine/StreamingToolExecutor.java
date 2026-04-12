@@ -8,7 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.render.ToolCallStatus;
-import cz.krokviak.agents.cli.tool.ToolClassifier;
+import cz.krokviak.agents.agent.tool.ToolClassifier;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.runner.RunItem;
 import cz.krokviak.agents.tool.ToolOutput;

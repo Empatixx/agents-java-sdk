@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.guardrail;
+package cz.krokviak.agents.agent.guardrail;
 
 import java.util.Map;
 import java.util.Set;

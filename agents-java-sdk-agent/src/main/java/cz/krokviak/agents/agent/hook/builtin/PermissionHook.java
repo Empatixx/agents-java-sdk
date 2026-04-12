@@ -1,10 +1,10 @@
-package cz.krokviak.agents.cli.hook.builtin;
+package cz.krokviak.agents.agent.hook.builtin;
 
 import cz.krokviak.agents.api.hook.HookPhase;
 import cz.krokviak.agents.api.hook.HookResult;
 
-import cz.krokviak.agents.cli.hook.*;
-import cz.krokviak.agents.cli.permission.PermissionManager;
+import cz.krokviak.agents.agent.hook.*;
+import cz.krokviak.agents.agent.permission.PermissionManager;
 
 public class PermissionHook implements Hook {
     private final PermissionManager permissionManager;

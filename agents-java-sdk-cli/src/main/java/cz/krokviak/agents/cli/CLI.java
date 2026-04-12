@@ -9,15 +9,15 @@ import cz.krokviak.agents.cli.command.builtin.*;
 import cz.krokviak.agents.cli.cron.CronScheduler;
 import cz.krokviak.agents.cli.engine.AgentRunner;
 import cz.krokviak.agents.cli.engine.ToolDispatcher;
-import cz.krokviak.agents.cli.context.ContextCompactor;
-import cz.krokviak.agents.cli.hook.Hooks;
-import cz.krokviak.agents.cli.hook.builtin.GuardrailHook;
-import cz.krokviak.agents.cli.hook.builtin.PermissionHook;
-import cz.krokviak.agents.cli.hook.builtin.PlanModeHook;
+import cz.krokviak.agents.agent.context.ContextCompactor;
+import cz.krokviak.agents.agent.hook.Hooks;
+import cz.krokviak.agents.agent.hook.builtin.GuardrailHook;
+import cz.krokviak.agents.agent.hook.builtin.PermissionHook;
+import cz.krokviak.agents.agent.hook.builtin.PlanModeHook;
 import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.memory.MemoryLoader;
 import cz.krokviak.agents.cli.memory.MemoryStore;
-import cz.krokviak.agents.cli.permission.PermissionManager;
+import cz.krokviak.agents.agent.permission.PermissionManager;
 import cz.krokviak.agents.cli.plugin.PluginContextImpl;
 import cz.krokviak.agents.cli.plugin.Plugins;
 import cz.krokviak.agents.cli.repl.Repl;
@@ -113,7 +113,6 @@ public class CLI {
             var tuiRenderer = new cz.krokviak.agents.cli.render.tui.TuiRenderer(ctrl);
             cliApp = new cz.krokviak.agents.cli.render.tui.CliApp(ctrl, tuiRenderer);
             output = tuiRenderer;
-            permissionManager.setPromptRenderer(tuiRenderer);
         } else {
             output = new PlainRenderer();
         }

@@ -2,7 +2,7 @@ package cz.krokviak.agents.cli.command.builtin;
 
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
-import cz.krokviak.agents.cli.context.TokenEstimator;
+import cz.krokviak.agents.agent.context.TokenEstimator;
 
 public class CompactCommand implements Command {
     @Override public String name() { return "compact"; }

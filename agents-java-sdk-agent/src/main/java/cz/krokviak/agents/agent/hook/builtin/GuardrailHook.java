@@ -1,10 +1,10 @@
-package cz.krokviak.agents.cli.hook.builtin;
+package cz.krokviak.agents.agent.hook.builtin;
 
 import cz.krokviak.agents.api.hook.HookPhase;
 import cz.krokviak.agents.api.hook.HookResult;
 
-import cz.krokviak.agents.cli.guardrail.BuiltinGuardrails;
-import cz.krokviak.agents.cli.hook.*;
+import cz.krokviak.agents.agent.guardrail.BuiltinGuardrails;
+import cz.krokviak.agents.agent.hook.*;
 
 public class GuardrailHook implements Hook {
     @Override public HookPhase phase() { return HookPhase.PRE_TOOL; }

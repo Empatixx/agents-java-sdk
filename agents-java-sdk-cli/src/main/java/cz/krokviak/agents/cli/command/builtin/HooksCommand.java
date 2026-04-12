@@ -2,7 +2,7 @@ package cz.krokviak.agents.cli.command.builtin;
 
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
-import cz.krokviak.agents.cli.hook.Hooks;
+import cz.krokviak.agents.agent.hook.Hooks;
 
 import java.util.List;
 

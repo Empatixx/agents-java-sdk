@@ -8,8 +8,8 @@ import cz.krokviak.agents.api.event.AgentEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.hook.*;
-import cz.krokviak.agents.cli.tool.ToolClassifier;
+import cz.krokviak.agents.agent.hook.*;
+import cz.krokviak.agents.agent.tool.ToolClassifier;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.runner.RunItem;
 import cz.krokviak.agents.tool.*;
@@ -37,7 +37,7 @@ public class ToolDispatcher {
     public String executeTool(String toolName, Map<String, Object> arguments, String toolCallId) {
         // PRE_TOOL hook
         HookResult hookResult = hooks.dispatch(HookPhase.PRE_TOOL,
-            ToolUseEvent.preTool(toolName, arguments, ctx, toolCallId));
+            ToolUseEvent.preTool(toolName, arguments, ctx.agent(), toolCallId));
         if (hookResult instanceof HookResult.Block block) {
             return "Permission denied: " + block.reason();
         }
@@ -54,7 +54,7 @@ public class ToolDispatcher {
 
             // POST_TOOL hook
             hooks.dispatch(HookPhase.POST_TOOL,
-                ToolUseEvent.postTool(toolName, arguments, ctx, toolCallId, ToolOutput.text(resultText)));
+                ToolUseEvent.postTool(toolName, arguments, ctx.agent(), toolCallId, ToolOutput.text(resultText)));
 
             return resultText;
         } catch (Exception e) {
