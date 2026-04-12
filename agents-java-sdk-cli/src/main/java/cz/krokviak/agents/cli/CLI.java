@@ -144,7 +144,8 @@ public class CLI {
         permissionManager.setAgentService(agentService);
         agentService.setAgentRegistry(agentRegistry);
         agentService.setTeamManager(teamManager);
-        agentService.setSpawner(new cz.krokviak.agents.agent.spawn.AgentSpawner(ctx, agentRegistry, taskManager));
+        var spawner = new cz.krokviak.agents.agent.spawn.AgentSpawner(ctx, agentRegistry, taskManager);
+        agentService.setSpawner(spawner);
 
         // Load output styles from ~/.claude/output-styles/ + .krok/output-styles/
         ctx.setOutputStyles(new cz.krokviak.agents.cli.style.OutputStyleRegistry(
@@ -280,15 +281,17 @@ public class CLI {
         hooks.dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.SESSION_START,
             new cz.krokviak.agents.api.hook.events.SessionEvent(sessionId, ctx.history().size()));
 
-        // SESSION_END on JVM shutdown — flushes plugin state, analytics, etc.
+        // SESSION_END on JVM shutdown — flushes plugin state, drains background schedulers.
         final String finalSessionId = sessionId;
         final var finalCtx = ctx;
         final var finalHooks = hooks;
+        final var finalSpawner = spawner;
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 finalHooks.dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.SESSION_END,
                     new cz.krokviak.agents.api.hook.events.SessionEvent(finalSessionId, finalCtx.history().size()));
             } catch (Exception ignored) {}
+            try { finalSpawner.shutdown(); } catch (Exception ignored) {}
         }, "session-end-hook"));
 
         new Repl(ctx, commands, cliApp).start();

@@ -34,10 +34,12 @@ public class AgentSpawner {
     private final AgentContext ctx;
     private final AgentRegistry registry;
     private final TaskManager taskManager;
+    // Non-daemon executor with explicit shutdown() — JVM SIGTERM or SESSION_END
+    // drains pending summary calls instead of swallowing them mid-I/O.
     private final java.util.concurrent.ScheduledExecutorService summaryScheduler =
         java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "agent-summary-scheduler");
-            t.setDaemon(true);
+            t.setDaemon(false);
             return t;
         });
 
@@ -45,6 +47,23 @@ public class AgentSpawner {
         this.ctx = ctx;
         this.registry = registry;
         this.taskManager = taskManager;
+    }
+
+    /**
+     * Graceful shutdown — stops accepting new summary ticks and drains the in-flight
+     * ones with a 5-second budget. Should be called from the SESSION_END hook (CLI.java
+     * wires a JVM shutdown hook for this).
+     */
+    public void shutdown() {
+        summaryScheduler.shutdown();
+        try {
+            if (!summaryScheduler.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                summaryScheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            summaryScheduler.shutdownNow();
+        }
     }
 
     /**
