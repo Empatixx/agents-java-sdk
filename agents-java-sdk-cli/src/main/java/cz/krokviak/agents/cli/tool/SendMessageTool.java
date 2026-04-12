@@ -1,6 +1,6 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.mailbox.MailboxManager;
+import cz.krokviak.agents.api.AgentService;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.ExecutableTool;
 import cz.krokviak.agents.tool.ToolArgs;
@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 public class SendMessageTool implements ExecutableTool {
-    private final MailboxManager mailboxManager;
+    private final AgentService agent;
     private final ToolDefinition toolDefinition;
 
-    public SendMessageTool(MailboxManager mailboxManager) {
-        this.mailboxManager = mailboxManager;
+    public SendMessageTool(AgentService agent) {
+        this.agent = agent;
         this.toolDefinition = new ToolDefinition("send_message",
             "Send a message to the main agent or a background task mailbox.",
             Map.of("type", "object", "properties", Map.of(
@@ -42,7 +42,7 @@ public class SendMessageTool implements ExecutableTool {
             case "parent" -> "main";
             default -> recipient;
         };
-        mailboxManager.send(sender, normalizedRecipient, message);
+        agent.sendMailbox(sender, normalizedRecipient, message);
         return ToolOutput.text("Message sent to " + normalizedRecipient + " from " + sender);
     }
 }
