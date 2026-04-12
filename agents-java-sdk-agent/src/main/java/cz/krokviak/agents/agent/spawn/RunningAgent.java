@@ -54,4 +54,9 @@ public class RunningAgent {
     public synchronized String getOutput() {
         return outputCollector.toString();
     }
+
+    /** Latest activity (last tool name/args or assistant-text chunk) for progress summaries. */
+    private volatile String currentActivity;
+    public void setCurrentActivity(String activity) { this.currentActivity = activity; }
+    public String currentActivity() { return currentActivity; }
 }

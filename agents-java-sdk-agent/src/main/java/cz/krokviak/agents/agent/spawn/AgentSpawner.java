@@ -29,9 +29,17 @@ public class AgentSpawner {
         You are a sub-agent spawned to handle a specific task. You have access to file system tools. \
         Complete your task thoroughly and return clear, structured results. Be concise but complete.""";
 
+    private static final long SUMMARY_INTERVAL_SECS = 30;
+
     private final AgentContext ctx;
     private final AgentRegistry registry;
     private final TaskManager taskManager;
+    private final java.util.concurrent.ScheduledExecutorService summaryScheduler =
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "agent-summary-scheduler");
+            t.setDaemon(true);
+            return t;
+        });
 
     public AgentSpawner(AgentContext ctx, AgentRegistry registry, TaskManager taskManager) {
         this.ctx = ctx;
@@ -78,6 +86,8 @@ public class AgentSpawner {
 
         ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentStarted(name, "background"));
 
+        java.util.concurrent.ScheduledFuture<?> summaryTask = schedulePeriodicSummary(name, agent);
+
         Thread thread = Thread.startVirtualThread(() -> {
             agent.setStatus(AgentStatus.RUNNING);
             task.start();
@@ -94,6 +104,8 @@ public class AgentSpawner {
                 task.fail(e.getMessage());
                 taskManager.addNotification(new TaskManager.TaskNotification(
                     taskId, name, TaskState.Status.FAILED, e.getMessage()));
+            } finally {
+                summaryTask.cancel(false);
             }
         });
 
@@ -179,6 +191,7 @@ public class AgentSpawner {
 
             var bus = ctx.eventBus();
             for (var tc : tcs) {
+                agent.setCurrentActivity(tc.name() + "(" + tc.arguments() + ")");
                 bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolStarted(
                     tc.name(), tc.arguments(), tc.id(), true));
                 long startNanos = System.nanoTime();
@@ -206,6 +219,41 @@ public class AgentSpawner {
         } finally {
             // AgentCompleted/Failed event handles clearCurrentAgent via listener
         }
+    }
+
+    private static final String AGENT_PROGRESS_SYSTEM_PROMPT = """
+        Describe the sub-agent's most recent action in 3–5 words using present tense (-ing).
+        Name the file or function, not a branch or category. Output the sentence only,
+        no quotes, no trailing punctuation.
+        Good: Reading runAgent.ts
+        Good: Fixing null check in validate.ts
+        Good: Running auth module tests
+        Bad (past tense): Analyzed the branch diff
+        Bad (too vague): Investigating the issue""";
+
+    /** Schedule a periodic {@code AgentProgress} summary tick for a running background worker. */
+    private java.util.concurrent.ScheduledFuture<?> schedulePeriodicSummary(String agentId, RunningAgent agent) {
+        final java.util.concurrent.atomic.AtomicReference<String> prevSummary = new java.util.concurrent.atomic.AtomicReference<>();
+        return summaryScheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (agent.status() != AgentStatus.RUNNING) return;
+                if (ctx.summaryModelOrMain() == null) return;
+                String activity = agent.currentActivity();
+                if (activity == null || activity.isBlank()) return;
+                String user = "Most recent activity: " + activity
+                    + "\nTool calls so far: " + agent.toolUseCount()
+                    + "\nElapsed: " + agent.elapsed();
+                String prev = prevSummary.get();
+                if (prev != null) user += "\nPrevious summary: \"" + prev + "\" — say something NEW.";
+                var svc = new cz.krokviak.agents.agent.summary.SummaryService(ctx);
+                svc.summarize(AGENT_PROGRESS_SYSTEM_PROMPT, user, 64).ifPresent(summary -> {
+                    prevSummary.set(summary);
+                    ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentProgress(agentId, summary));
+                });
+            } catch (Exception ignored) {
+                // Never propagate; a flaky summary call must not crash the scheduler.
+            }
+        }, SUMMARY_INTERVAL_SECS, SUMMARY_INTERVAL_SECS, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     private void injectMailbox(List<InputItem> history, String agentId) {
