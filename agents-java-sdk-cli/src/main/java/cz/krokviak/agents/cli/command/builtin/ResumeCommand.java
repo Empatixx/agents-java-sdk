@@ -28,8 +28,9 @@ public class ResumeCommand implements Command {
         }
 
         List<SessionMetadata> sessions = advanced.listSessionsWithMetadata();
+        String currentId = ctx.agent().currentSessionId();
         sessions = sessions.stream()
-            .filter(s -> !s.sessionId().equals(ctx.sessionId()))
+            .filter(s -> !s.sessionId().equals(currentId))
             .toList();
 
         if (sessions.isEmpty()) {
@@ -86,10 +87,8 @@ public class ResumeCommand implements Command {
     }
 
     private void resumeSession(CliContext ctx, SessionMetadata meta) {
-        var loaded = ctx.session().getHistory(meta.sessionId());
-        ctx.history().clear();
-        ctx.history().addAll(loaded);
-        ctx.setSessionId(meta.sessionId());
+        ctx.agent().loadSession(meta.sessionId()).join();
+        var loaded = ctx.agent().history().items();
 
         String title = meta.title() != null ? truncate(meta.title(), 60) : "(untitled)";
         ctx.output().println("");
