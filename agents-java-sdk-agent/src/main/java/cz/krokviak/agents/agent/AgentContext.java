@@ -57,6 +57,7 @@ public class AgentContext {
     private volatile AgentService agent;
     private volatile String systemPromptSuffix;
     private final cz.krokviak.agents.runner.AbortSignal abortSignal = new cz.krokviak.agents.runner.AbortSignal();
+    private volatile cz.krokviak.agents.agent.hook.Hooks hooks;
 
     private final java.util.concurrent.ConcurrentHashMap<String, String> properties = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -157,6 +158,10 @@ public class AgentContext {
      * new {@code runTurn(...)}.
      */
     public cz.krokviak.agents.runner.AbortSignal abortSignal() { return abortSignal; }
+
+    /** Shared {@link cz.krokviak.agents.agent.hook.Hooks} registry. Installed by the bootstrap. */
+    public void setHooks(cz.krokviak.agents.agent.hook.Hooks hooks) { this.hooks = hooks; }
+    public cz.krokviak.agents.agent.hook.Hooks hooks() { return hooks; }
 
     /** System prompt with active suffix appended. Engine calls this at turn time. */
     public String effectiveSystemPrompt() {

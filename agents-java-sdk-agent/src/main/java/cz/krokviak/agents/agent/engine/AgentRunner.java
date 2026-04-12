@@ -32,9 +32,21 @@ public class AgentRunner {
     }
 
     public void run(String userInput) {
+        // PRE_TURN hook — hooks can inject additional system-prompt lines.
+        List<String> additionalContext = new ArrayList<>();
+        toolDispatcher.hooks().dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.PRE_TURN,
+            new cz.krokviak.agents.api.hook.events.PreTurnEvent(userInput, additionalContext));
+        if (!additionalContext.isEmpty()) {
+            ctx.history().add(new InputItem.SystemMessage(String.join("\n", additionalContext)));
+        }
+
         ctx.history().add(new InputItem.UserMessage(userInput));
         List<RunItem> newItems = new ArrayList<>();
         newItems.add(new RunItem.UserInput(userInput));
+
+        final StringBuilder lastAssistantText = new StringBuilder();
+        final List<InputItem.ToolCall> lastTurnTools = new ArrayList<>();
+        int turnsDone = 0;
 
         try {
             boolean retried = false;
@@ -114,11 +126,15 @@ public class AgentRunner {
                         break;
                     }
                     retried = true;
-                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.CompactionTriggered(
-                        ctx.history().size(), -1));
+                    int sizeBefore = ctx.history().size();
+                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.CompactionTriggered(sizeBefore, -1));
+                    toolDispatcher.hooks().dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.PRE_COMPACT,
+                        new cz.krokviak.agents.api.hook.events.CompactEvent(sizeBefore, -1, "context-too-long"));
                     var reactiveCompacted = ctx.compactionPipeline().reactiveCompact(ctx.history(), ctx.systemPrompt());
                     ctx.history().clear();
                     ctx.history().addAll(reactiveCompacted);
+                    toolDispatcher.hooks().dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.POST_COMPACT,
+                        new cz.krokviak.agents.api.hook.events.CompactEvent(sizeBefore, ctx.history().size(), "context-too-long"));
                     turn--; // retry this turn
                     continue;
                 }
@@ -142,11 +158,17 @@ public class AgentRunner {
                 ctx.history().add(new InputItem.AssistantMessage(collector.text(), toolCalls));
                 if (collector.text() != null) {
                     newItems.add(new RunItem.MessageOutput("assistant", collector.text()));
+                    lastAssistantText.setLength(0);
+                    lastAssistantText.append(collector.text());
                 }
+                lastTurnTools.clear();
+                lastTurnTools.addAll(toolCalls);
+                turnsDone++;
 
                 if (!collector.hasToolCalls()) {
                     saveSession(newItems);
                     streamingExecutor.shutdown();
+                    firePostTurn(lastAssistantText.toString(), lastTurnTools, turnsDone);
                     return;
                 }
 
@@ -172,6 +194,7 @@ public class AgentRunner {
                 ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ErrorOccurred(
                     "Reached maximum turns (" + maxTurns + ")"));
             }
+            firePostTurn(lastAssistantText.toString(), lastTurnTools, turnsDone);
         } catch (Exception e) {
             String msg = e.getMessage();
             if (msg == null) msg = e.getClass().getSimpleName();
@@ -230,6 +253,22 @@ public class AgentRunner {
         Good: Running auth module tests
         Bad (past tense): Analyzed the branch diff
         Bad (too vague): Investigating the issue""";
+
+    /**
+     * Dispatch POST_TURN hook. A {@code Block} result is ignored here because
+     * the loop has already exited by the time this fires; the semantic is "can
+     * veto further continuation", and callers (e.g. higher-level loops) can
+     * inspect the return via a future refactor.
+     */
+    private void firePostTurn(String assistantOutput, List<InputItem.ToolCall> toolsUsed, int turnsElapsed) {
+        try {
+            toolDispatcher.hooks().dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.POST_TURN,
+                new cz.krokviak.agents.api.hook.events.PostTurnEvent(
+                    assistantOutput, List.copyOf(toolsUsed), turnsElapsed));
+        } catch (Exception ignored) {
+            // POST_TURN hook failures must not fail the run.
+        }
+    }
 
     /** Fire-and-forget summary of the turn's tool batch on a virtual thread. */
     private void fireToolBatchSummary(List<InputItem.ToolCall> toolCalls) {

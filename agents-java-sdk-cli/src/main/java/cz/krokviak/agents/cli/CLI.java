@@ -168,6 +168,7 @@ public class CLI {
 
         // Hooks (plan mode → guardrail → permission, in order)
         Hooks hooks = new Hooks();
+        ctx.setHooks(hooks);
         var planStore = new cz.krokviak.agents.agent.plan.PlanStore();
         ctx.setPlanStore(planStore);
         hooks.register(new PlanModeHook(planStore));
@@ -270,6 +271,22 @@ public class CLI {
         // Run
         AgentRunner runner = new AgentRunner(ctx, toolDispatcher, config.maxTurns());
         agentService.setRunner(runner);
+
+        // SESSION_START hook fires once the agent + registry + hooks are fully wired.
+        hooks.dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.SESSION_START,
+            new cz.krokviak.agents.api.hook.events.SessionEvent(sessionId, ctx.history().size()));
+
+        // SESSION_END on JVM shutdown — flushes plugin state, analytics, etc.
+        final String finalSessionId = sessionId;
+        final var finalCtx = ctx;
+        final var finalHooks = hooks;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                finalHooks.dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.SESSION_END,
+                    new cz.krokviak.agents.api.hook.events.SessionEvent(finalSessionId, finalCtx.history().size()));
+            } catch (Exception ignored) {}
+        }, "session-end-hook"));
+
         new Repl(ctx, commands, cliApp).start();
     }
 }

@@ -30,6 +30,8 @@ public class ToolDispatcher {
         this.ctx = ctx;
     }
 
+    public Hooks hooks() { return hooks; }
+
     /**
      * Shared tool execution with hook dispatch. Used by both ToolDispatcher and StreamingToolExecutor.
      * Returns the result text. Does NOT add to history or print — caller handles that.

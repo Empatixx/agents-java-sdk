@@ -57,16 +57,19 @@ public class AgentSpawner {
         registry.register(name, agent);
 
         ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentStarted(name, name));
+        fireSubagentStart(name, false);
 
         try {
             String result = runLoop(name, prompt, tools, model, progress, agent, maxTurns);
             agent.setStatus(AgentStatus.COMPLETED);
             ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentCompleted(name, result.length() > 200 ? result.substring(0, 200) : result));
+            fireSubagentStop(name, AgentStatus.COMPLETED, result, false);
             registry.remove(name);
             return result;
         } catch (Exception e) {
             agent.setStatus(AgentStatus.FAILED);
             ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentFailed(name, e.getMessage()));
+            fireSubagentStop(name, AgentStatus.FAILED, e.getMessage(), false);
             registry.remove(name);
             return "Error: " + e.getMessage();
         }
@@ -85,6 +88,7 @@ public class AgentSpawner {
         taskManager.register(task);
 
         ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentStarted(name, "background"));
+        fireSubagentStart(name, true);
 
         java.util.concurrent.ScheduledFuture<?> summaryTask = schedulePeriodicSummary(name, agent);
 
@@ -99,11 +103,13 @@ public class AgentSpawner {
                 taskManager.addNotification(new TaskManager.TaskNotification(
                     taskId, name, TaskState.Status.COMPLETED,
                     result.length() > 200 ? result.substring(0, 200) + "..." : result));
+                fireSubagentStop(name, AgentStatus.COMPLETED, result, true);
             } catch (Exception e) {
                 agent.setStatus(AgentStatus.FAILED);
                 task.fail(e.getMessage());
                 taskManager.addNotification(new TaskManager.TaskNotification(
                     taskId, name, TaskState.Status.FAILED, e.getMessage()));
+                fireSubagentStop(name, AgentStatus.FAILED, e.getMessage(), true);
             } finally {
                 summaryTask.cancel(false);
             }
@@ -220,6 +226,26 @@ public class AgentSpawner {
         } finally {
             // AgentCompleted/Failed event handles clearCurrentAgent via listener
         }
+    }
+
+    private void fireSubagentStart(String name, boolean background) {
+        var hooks = ctx.hooks();
+        if (hooks == null) return;
+        try {
+            hooks.dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.SUBAGENT_START,
+                new cz.krokviak.agents.api.hook.events.SubagentEvent(name, name, "STARTING", null, background));
+        } catch (Exception ignored) {}
+    }
+
+    private void fireSubagentStop(String name, AgentStatus status, String result, boolean background) {
+        var hooks = ctx.hooks();
+        if (hooks == null) return;
+        try {
+            String truncated = result == null ? null :
+                (result.length() > 500 ? result.substring(0, 500) + "..." : result);
+            hooks.dispatchTyped(cz.krokviak.agents.api.hook.HookPhase.SUBAGENT_STOP,
+                new cz.krokviak.agents.api.hook.events.SubagentEvent(name, name, status.name(), truncated, background));
+        } catch (Exception ignored) {}
     }
 
     private static final String AGENT_PROGRESS_SYSTEM_PROMPT = """
