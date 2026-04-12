@@ -20,4 +20,9 @@ public final class AgentDefaults {
     public static final int MICRO_COMPACTOR_KEEP_RECENT = 10;
     public static final int SNIP_COMPACTOR_THRESHOLD = 60_000;
     public static final int TOOL_EXECUTION_TIMEOUT_SECONDS = 120;
+
+    /** Soft ceiling on in-memory history size; beyond this we trim oldest items to cap at this value. */
+    public static final int HISTORY_HARD_CAP = 5_000;
+    /** Threshold at which we emit a one-time warning about unusually large history. */
+    public static final int HISTORY_WARN_THRESHOLD = 2_500;
 }
