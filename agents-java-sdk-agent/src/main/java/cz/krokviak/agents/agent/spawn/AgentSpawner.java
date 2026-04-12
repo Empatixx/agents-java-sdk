@@ -167,36 +167,48 @@ public class AgentSpawner {
             injectMailbox(history, agentId);
             if (progress != null) progress.updateActivity("turn " + (turn + 1));
 
-            ModelResponse resp = model.call(
-                new LlmContext(systemPrompt, List.copyOf(history), defs, null,
-                    ModelSettings.builder().maxTokens(8192).build()),
-                ModelSettings.builder().maxTokens(8192).build());
+            // Streaming sub-agent: same architecture as main AgentRunner. Text/thinking/
+            // tool-call deltas flow onto the shared event bus so TUI + dashboards see
+            // sub-agents live, not just their final result.
+            var bus = ctx.eventBus();
+            var collector = new cz.krokviak.agents.agent.engine.StreamCollector();
+            var settings = ModelSettings.builder().maxTokens(8192).build();
+            var llmCtx = new LlmContext(systemPrompt, List.copyOf(history), defs, null, settings);
 
-            // Track tokens
-            if (resp.usage() != null) {
+            try (cz.krokviak.agents.model.ModelResponseStream stream = model.callStreamed(llmCtx, settings)) {
+                for (var event : stream) {
+                    ctx.abortSignal().throwIfAborted();
+                    switch (event) {
+                        case cz.krokviak.agents.model.ModelResponseStream.Event.TextDelta td -> {
+                            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ResponseDelta(td.delta()));
+                            collector.onTextDelta(td.delta());
+                        }
+                        case cz.krokviak.agents.model.ModelResponseStream.Event.ThinkingDelta thd ->
+                            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDelta(thd.delta()));
+                        case cz.krokviak.agents.model.ModelResponseStream.Event.ToolCallDelta tcd ->
+                            collector.onToolCallDelta(tcd.toolCallId(), tcd.name(), tcd.argumentsDelta());
+                        case cz.krokviak.agents.model.ModelResponseStream.Event.Done done ->
+                            collector.onDone(done.fullResponse());
+                    }
+                }
+            }
+
+            ModelResponse resp = collector.response();
+            if (resp != null && resp.usage() != null) {
                 int tokens = resp.usage().inputTokens() + resp.usage().outputTokens();
                 if (progress != null) progress.addTokens(tokens);
                 agent.addTokens(tokens);
             }
 
-            boolean hasTools = false;
-            List<InputItem.ToolCall> tcs = new ArrayList<>();
-            for (var out : resp.output()) {
-                switch (out) {
-                    case ModelResponse.OutputItem.Message msg -> response.append(msg.content());
-                    case ModelResponse.OutputItem.ToolCallRequest tc -> {
-                        hasTools = true;
-                        tcs.add(new InputItem.ToolCall(tc.id(), tc.name(), tc.arguments()));
-                    }
-                }
-            }
+            if (collector.text() != null) response.append(collector.text());
+            List<InputItem.ToolCall> tcs = collector.toolCalls();
+            boolean hasTools = !tcs.isEmpty();
 
             if (!hasTools) break;
 
             history.add(new InputItem.AssistantMessage(response.isEmpty() ? null : response.toString(), tcs));
             response.setLength(0);
 
-            var bus = ctx.eventBus();
             for (var tc : tcs) {
                 agent.setCurrentActivity(tc.name() + "(" + tc.arguments() + ")");
                 bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolStarted(
