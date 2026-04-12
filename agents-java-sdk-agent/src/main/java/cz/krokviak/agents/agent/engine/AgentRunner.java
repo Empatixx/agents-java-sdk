@@ -57,12 +57,13 @@ public class AgentRunner {
                 injectTaskNotifications();
                 injectMailboxMessages();
 
-                // 3-layer compaction pipeline
+                // 3-layer compaction pipeline — layers 1+2 sync per turn, layer 3 async in background.
                 var compacted = ctx.compactionPipeline().compact(ctx.history(), ctx.systemPrompt());
                 if (compacted != ctx.history()) {
                     ctx.history().clear();
                     ctx.history().addAll(compacted);
                 }
+                ctx.compactionPipeline().compactL3Async(ctx.history(), ctx.systemPrompt());
 
                 // Build system prompt: base + frontend-injected suffix (e.g. output style) + optional plan-mode block
                 String systemPrompt = ctx.effectiveSystemPrompt();
