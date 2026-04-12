@@ -30,6 +30,7 @@
         <junit.version>5.11.4</junit.version>
         <sqlite.version>3.47.2.0</sqlite.version>
         <logback.version>1.5.16</logback.version>
+        <archunit.version>1.3.0</archunit.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -60,6 +61,12 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>cz.krokviak</groupId>
@@ -124,6 +131,32 @@
                 <configuration>
                     <argLine>--enable-preview</argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <!-- dependencyConvergence temporarily disabled — openai-java 4.31 has internal
+                                     diamond deps that the enforcer flags; architecture review S1/S2 phase
+                                     will revisit adapter dependencies. Re-enable when adapters are split. -->
+                                <requireJavaVersion>
+                                    <version>[${java.version},)</version>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.6,)</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
