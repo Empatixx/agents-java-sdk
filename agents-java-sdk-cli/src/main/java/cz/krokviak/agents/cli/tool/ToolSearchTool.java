@@ -1,7 +1,7 @@
 package cz.krokviak.agents.cli.tool;
 
 import cz.krokviak.agents.cli.engine.DeferredTool;
-import cz.krokviak.agents.cli.engine.ToolDispatcher;
+import cz.krokviak.agents.agent.engine.ToolDispatcher;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 import java.util.*;

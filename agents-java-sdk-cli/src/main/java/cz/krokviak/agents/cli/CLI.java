@@ -7,8 +7,8 @@ import cz.krokviak.agents.agent.spawn.TeamManager;
 import cz.krokviak.agents.cli.command.Commands;
 import cz.krokviak.agents.cli.command.builtin.*;
 import cz.krokviak.agents.cli.cron.CronScheduler;
-import cz.krokviak.agents.cli.engine.AgentRunner;
-import cz.krokviak.agents.cli.engine.ToolDispatcher;
+import cz.krokviak.agents.agent.engine.AgentRunner;
+import cz.krokviak.agents.agent.engine.ToolDispatcher;
 import cz.krokviak.agents.agent.context.ContextCompactor;
 import cz.krokviak.agents.agent.hook.Hooks;
 import cz.krokviak.agents.agent.hook.builtin.GuardrailHook;
@@ -135,12 +135,12 @@ public class CLI {
         new cz.krokviak.agents.cli.event.RenderEventListener(output).register(ctx.eventBus());
 
         // Install UI-agnostic agent facade (Phase 1: delegates to existing managers via CliContext)
-        var agentService = new cz.krokviak.agents.cli.service.AgentServiceImpl(ctx);
+        var agentService = new cz.krokviak.agents.agent.service.AgentServiceImpl(ctx);
         ctx.setAgent(agentService);
         permissionManager.setAgentService(agentService);
         agentService.setAgentRegistry(agentRegistry);
         agentService.setTeamManager(teamManager);
-        agentService.setSpawner(new cz.krokviak.agents.cli.agent.AgentSpawner(ctx, agentRegistry, taskManager));
+        agentService.setSpawner(new cz.krokviak.agents.agent.spawn.AgentSpawner(ctx, agentRegistry, taskManager));
 
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {

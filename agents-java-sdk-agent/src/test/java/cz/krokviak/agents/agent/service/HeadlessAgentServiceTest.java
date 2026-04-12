@@ -1,14 +1,14 @@
-package cz.krokviak.agents.cli.service;
+package cz.krokviak.agents.agent.service;
+
+import cz.krokviak.agents.agent.AgentContext;
 
 import cz.krokviak.agents.api.AgentService;
 import cz.krokviak.agents.api.dto.PermissionDecision;
 import cz.krokviak.agents.api.event.AgentEvent;
-import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.agent.context.ContextCompactor;
 import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.agent.permission.PermissionManager;
 import cz.krokviak.agents.agent.task.TaskManager;
-import cz.krokviak.agents.cli.test.FakeRenderer;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -28,9 +28,9 @@ class HeadlessAgentServiceTest {
 
     @Test
     void eventSubscriptionAndPromptResolveWorkWithoutRenderer() throws Exception {
-        var ctx = new CliContext(
+        var ctx = new AgentContext(
             null, "claude-test", "", "",
-            new FakeRenderer(), new PermissionManager(PermissionManager.PermissionMode.DEFAULT),
+             new PermissionManager(PermissionManager.PermissionMode.DEFAULT),
             new ContextCompactor(null), Path.of("/tmp"), "", null, "s1",
             new TaskManager(), new MailboxManager()
         );

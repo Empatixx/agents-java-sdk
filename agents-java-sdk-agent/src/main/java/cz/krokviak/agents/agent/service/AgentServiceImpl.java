@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.service;
+package cz.krokviak.agents.agent.service;
 
 import cz.krokviak.agents.api.AgentService;
 import cz.krokviak.agents.api.dto.*;
@@ -7,7 +7,7 @@ import cz.krokviak.agents.api.event.EventBus;
 import cz.krokviak.agents.api.hook.Hook;
 import cz.krokviak.agents.api.hook.HookPhase;
 import cz.krokviak.agents.api.tool.ToolDescriptor;
-import cz.krokviak.agents.cli.CliContext;
+import cz.krokviak.agents.agent.AgentContext;
 
 import java.util.List;
 import java.util.Map;
@@ -17,25 +17,25 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Concrete {@link AgentService} implementation backed by the existing CLI
- * managers held by {@link CliContext}. Lives in the CLI module during
+ * managers held by {@link AgentContext}. Lives in the CLI module during
  * Phase 1; moves to the {@code -agent} module in Phase 2.
  *
  * <p>Operations that are already wrapped by a manager delegate directly.
  * Operations that depend on legacy direct-field access (history mutation,
  * notification drain, etc.) are migrated incrementally as call sites are
- * refactored off the deprecated {@link CliContext} getters.
+ * refactored off the deprecated {@link AgentContext} getters.
  */
 public final class AgentServiceImpl implements AgentService {
 
-    private final CliContext ctx;
+    private final AgentContext ctx;
     private final ConcurrentHashMap<String, CompletableFuture<PermissionDecision>> pendingPermissions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CompletableFuture<Integer>> pendingQuestions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CompletableFuture<String>> pendingTextInputs = new ConcurrentHashMap<>();
 
-    private volatile cz.krokviak.agents.cli.engine.ToolDispatcher toolDispatcher;
-    private volatile cz.krokviak.agents.cli.agent.AgentSpawner spawner;
+    private volatile cz.krokviak.agents.agent.engine.ToolDispatcher toolDispatcher;
+    private volatile cz.krokviak.agents.agent.spawn.AgentSpawner spawner;
 
-    public AgentServiceImpl(CliContext ctx) {
+    public AgentServiceImpl(AgentContext ctx) {
         this.ctx = ctx;
         // Bridge TaskManager push-notifications onto the event bus.
         ctx.taskManager().onNotification(n ->
@@ -46,12 +46,12 @@ public final class AgentServiceImpl implements AgentService {
     }
 
     /** Plug in the ToolDispatcher so {@link #availableTools()} can list registered tools. */
-    public void setToolDispatcher(cz.krokviak.agents.cli.engine.ToolDispatcher toolDispatcher) {
+    public void setToolDispatcher(cz.krokviak.agents.agent.engine.ToolDispatcher toolDispatcher) {
         this.toolDispatcher = toolDispatcher;
     }
 
     /** Plug in the AgentSpawner so {@link #spawnAgent} is operational. */
-    public void setSpawner(cz.krokviak.agents.cli.agent.AgentSpawner spawner) {
+    public void setSpawner(cz.krokviak.agents.agent.spawn.AgentSpawner spawner) {
         this.spawner = spawner;
     }
 

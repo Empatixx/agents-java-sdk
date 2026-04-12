@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

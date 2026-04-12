@@ -1,8 +1,9 @@
-package cz.krokviak.agents.cli.service;
+package cz.krokviak.agents.agent.service;
+
+import cz.krokviak.agents.agent.AgentContext;
 
 import cz.krokviak.agents.api.dto.PermissionDecision;
 import cz.krokviak.agents.api.event.AgentEvent;
-import cz.krokviak.agents.cli.event.CliEventBus;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -17,8 +18,8 @@ class PermissionRequestFlowTest {
     void requestEmitsEventAndFutureCompletesOnResolve() throws Exception {
         // Build a minimal AgentService-like harness around CliEventBus + the
         // pending-future map that AgentServiceImpl implements. We don't need
-        // a full CliContext for this contract test.
-        var bus = new CliEventBus();
+        // a full AgentContext for this contract test.
+        var bus = new cz.krokviak.agents.agent.event.DefaultEventBus();
         var pending = new java.util.concurrent.ConcurrentHashMap<String, CompletableFuture<PermissionDecision>>();
 
         AtomicReference<AgentEvent.PermissionRequested> seen = new AtomicReference<>();

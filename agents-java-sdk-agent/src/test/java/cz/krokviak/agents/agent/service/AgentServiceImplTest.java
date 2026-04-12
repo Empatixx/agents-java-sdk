@@ -1,13 +1,13 @@
-package cz.krokviak.agents.cli.service;
+package cz.krokviak.agents.agent.service;
+
+import cz.krokviak.agents.agent.AgentContext;
 
 import cz.krokviak.agents.api.dto.PermissionDecision;
 import cz.krokviak.agents.api.event.AgentEvent;
-import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.agent.context.ContextCompactor;
 import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.agent.permission.PermissionManager;
 import cz.krokviak.agents.agent.task.TaskManager;
-import cz.krokviak.agents.cli.test.FakeRenderer;
 import cz.krokviak.agents.runner.InputItem;
 import org.junit.jupiter.api.Test;
 
@@ -20,11 +20,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AgentServiceImplTest {
 
-    private CliContext newCtx() {
+    private AgentContext newCtx() {
         var permissions = new PermissionManager(PermissionManager.PermissionMode.DEFAULT);
-        return new CliContext(
+        return new AgentContext(
             /*model*/ null, "claude-test", "", "",
-            new FakeRenderer(), permissions,
+             permissions,
             new ContextCompactor(null), Path.of("/tmp"),
             "system", null, "session-1",
             new TaskManager(), new MailboxManager()

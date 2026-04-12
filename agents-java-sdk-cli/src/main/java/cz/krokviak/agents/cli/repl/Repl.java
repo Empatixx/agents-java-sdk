@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.command.Commands;
-import cz.krokviak.agents.cli.engine.AgentRunner;
+import cz.krokviak.agents.agent.engine.AgentRunner;
 import cz.krokviak.agents.cli.render.tui.CliApp;
 
 import java.io.BufferedReader;

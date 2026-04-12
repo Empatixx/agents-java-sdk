@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
 import cz.krokviak.agents.agent.engine.TokenBudget;
 
@@ -6,7 +6,7 @@ import cz.krokviak.agents.api.event.AgentEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import cz.krokviak.agents.cli.CliContext;
+import cz.krokviak.agents.agent.AgentContext;
 import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.exception.ContextTooLongException;
@@ -19,16 +19,16 @@ import java.util.List;
 
 public class AgentRunner {
     private static final Logger log = LoggerFactory.getLogger(AgentRunner.class);
-    private final CliContext ctx;
+    private final AgentContext ctx;
     private final ToolDispatcher toolDispatcher;
     private final int maxTurns;
     private final TokenBudget tokenBudget;
 
-    public AgentRunner(CliContext ctx, ToolDispatcher toolDispatcher, int maxTurns) {
+    public AgentRunner(AgentContext ctx, ToolDispatcher toolDispatcher, int maxTurns) {
         this.ctx = ctx;
         this.toolDispatcher = toolDispatcher;
         this.maxTurns = maxTurns;
-        this.tokenBudget = new TokenBudget(cz.krokviak.agents.cli.CliDefaults.TOKEN_BUDGET);
+        this.tokenBudget = new TokenBudget(cz.krokviak.agents.agent.AgentDefaults.TOKEN_BUDGET);
     }
 
     public void run(String userInput) {

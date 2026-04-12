@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
 import cz.krokviak.agents.api.hook.HookPhase;
 import cz.krokviak.agents.api.hook.HookResult;
@@ -7,7 +7,7 @@ import cz.krokviak.agents.api.event.AgentEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import cz.krokviak.agents.cli.CliContext;
+import cz.krokviak.agents.agent.AgentContext;
 import cz.krokviak.agents.agent.hook.*;
 import cz.krokviak.agents.agent.tool.ToolClassifier;
 import cz.krokviak.agents.runner.InputItem;
@@ -22,9 +22,9 @@ public class ToolDispatcher {
     private static final Logger log = LoggerFactory.getLogger(ToolDispatcher.class);
     private final List<ExecutableTool> tools;
     private final Hooks hooks;
-    private final CliContext ctx;
+    private final AgentContext ctx;
 
-    public ToolDispatcher(List<ExecutableTool> tools, Hooks hooks, CliContext ctx) {
+    public ToolDispatcher(List<ExecutableTool> tools, Hooks hooks, AgentContext ctx) {
         this.tools = tools;
         this.hooks = hooks;
         this.ctx = ctx;

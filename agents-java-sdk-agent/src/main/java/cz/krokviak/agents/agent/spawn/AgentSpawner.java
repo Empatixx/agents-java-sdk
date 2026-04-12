@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.agent;
+package cz.krokviak.agents.agent.spawn;
 
 import cz.krokviak.agents.agent.spawn.AgentRegistry;
 import cz.krokviak.agents.agent.spawn.RunningAgent;
@@ -7,7 +7,7 @@ import cz.krokviak.agents.agent.spawn.AgentStatus;
 
 import cz.krokviak.agents.api.event.AgentEvent;
 
-import cz.krokviak.agents.cli.CliContext;
+import cz.krokviak.agents.agent.AgentContext;
 import cz.krokviak.agents.agent.mailbox.MailboxManager;
 import cz.krokviak.agents.agent.spawn.AgentStatus;
 import cz.krokviak.agents.agent.task.TaskManager;
@@ -29,11 +29,11 @@ public class AgentSpawner {
         You are a sub-agent spawned to handle a specific task. You have access to file system tools. \
         Complete your task thoroughly and return clear, structured results. Be concise but complete.""";
 
-    private final CliContext ctx;
+    private final AgentContext ctx;
     private final AgentRegistry registry;
     private final TaskManager taskManager;
 
-    public AgentSpawner(CliContext ctx, AgentRegistry registry, TaskManager taskManager) {
+    public AgentSpawner(AgentContext ctx, AgentRegistry registry, TaskManager taskManager) {
         this.ctx = ctx;
         this.registry = registry;
         this.taskManager = taskManager;

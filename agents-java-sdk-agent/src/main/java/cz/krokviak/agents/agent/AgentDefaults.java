@@ -19,4 +19,5 @@ public final class AgentDefaults {
 
     public static final int MICRO_COMPACTOR_KEEP_RECENT = 10;
     public static final int SNIP_COMPACTOR_THRESHOLD = 60_000;
+    public static final int TOOL_EXECUTION_TIMEOUT_SECONDS = 120;
 }

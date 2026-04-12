@@ -1,4 +1,4 @@
-package cz.krokviak.agents.cli.engine;
+package cz.krokviak.agents.agent.engine;
 
 import cz.krokviak.agents.api.event.AgentEvent;
 
@@ -6,8 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.render.ToolCallStatus;
+import cz.krokviak.agents.agent.AgentContext;
 import cz.krokviak.agents.agent.tool.ToolClassifier;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.runner.RunItem;
@@ -31,11 +30,11 @@ import java.util.concurrent.*;
 public class StreamingToolExecutor {
     private static final Logger log = LoggerFactory.getLogger(StreamingToolExecutor.class);
 
-    private static final int TOOL_EXECUTION_TIMEOUT_SECONDS = cz.krokviak.agents.cli.CliDefaults.TOOL_EXECUTION_TIMEOUT_SECONDS;
+    private static final int TOOL_EXECUTION_TIMEOUT_SECONDS = cz.krokviak.agents.agent.AgentDefaults.TOOL_EXECUTION_TIMEOUT_SECONDS;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ToolDispatcher toolDispatcher;
-    private final CliContext ctx;
+    private final AgentContext ctx;
     /** Insertion-ordered and thread-safe for concurrent streaming + collection. */
     private final Map<String, String> toolCallNames = java.util.Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<String, StringBuilder> toolCallArgs = java.util.Collections.synchronizedMap(new LinkedHashMap<>());
@@ -46,7 +45,7 @@ public class StreamingToolExecutor {
 
     public record ToolResult(String toolCallId, String toolName, String resultText) {}
 
-    public StreamingToolExecutor(ToolDispatcher toolDispatcher, CliContext ctx) {
+    public StreamingToolExecutor(ToolDispatcher toolDispatcher, AgentContext ctx) {
         this.toolDispatcher = toolDispatcher;
         this.ctx = ctx;
     }
