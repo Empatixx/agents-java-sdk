@@ -6,14 +6,16 @@ public class SessionCommand implements Command {
     @Override public String description() { return "Show or switch session"; }
     @Override public void execute(String args, CliContext ctx) {
         if (args == null || args.isBlank()) {
-            ctx.output().println("Current session: " + (ctx.sessionId() != null ? ctx.sessionId() : "(none)"));
+            String id = ctx.agent().currentSessionId();
+            ctx.output().println("Current session: " + (id != null ? id : "(none)"));
             return;
         }
-        if (ctx.session() == null) { ctx.output().printError("No session backend configured."); return; }
-        ctx.setSessionId(args.trim());
-        var loaded = ctx.session().getHistory(ctx.sessionId());
-        ctx.history().clear();
-        ctx.history().addAll(loaded);
-        ctx.output().println("Switched to session: " + ctx.sessionId() + " (" + loaded.size() + " messages loaded)");
+        try {
+            ctx.agent().loadSession(args.trim()).join();
+            ctx.output().println("Switched to session: " + ctx.agent().currentSessionId() + " ("
+                + ctx.agent().history().size() + " messages loaded)");
+        } catch (Exception e) {
+            ctx.output().printError("Failed to load session: " + e.getMessage());
+        }
     }
 }

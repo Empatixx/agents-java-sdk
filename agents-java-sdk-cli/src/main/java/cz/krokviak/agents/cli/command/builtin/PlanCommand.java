@@ -17,8 +17,8 @@ public class PlanCommand implements Command {
 
     @Override
     public void execute(String args, CliContext ctx) {
-        boolean entering = !ctx.isPlanMode();
-        ctx.setPlanMode(entering);
+        boolean entering = !ctx.agent().isPlanMode();
+        ctx.agent().setPlanMode(entering);
         if (entering) {
             try { planStore.createPlan(); } catch (Exception ignored) {}
         }
