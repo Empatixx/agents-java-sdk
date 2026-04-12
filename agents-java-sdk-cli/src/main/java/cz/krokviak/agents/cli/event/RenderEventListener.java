@@ -16,7 +16,7 @@ public final class RenderEventListener {
         this.renderer = renderer;
     }
 
-    public void register(CliEventBus bus) {
+    public void register(cz.krokviak.agents.api.event.EventBus bus) {
         bus.subscribe(this::handle);
     }
 
