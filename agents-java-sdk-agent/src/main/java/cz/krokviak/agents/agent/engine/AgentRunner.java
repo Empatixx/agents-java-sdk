@@ -23,6 +23,7 @@ public class AgentRunner {
     private final ToolDispatcher toolDispatcher;
     private final int maxTurns;
     private final TokenBudget tokenBudget;
+    private final HistoryGovernor historyGovernor = new HistoryGovernor();
 
     public AgentRunner(AgentContext ctx, ToolDispatcher toolDispatcher, int maxTurns) {
         this.ctx = ctx;
@@ -64,6 +65,7 @@ public class AgentRunner {
                     ctx.history().addAll(compacted);
                 }
                 ctx.compactionPipeline().compactL3Async(ctx.history(), ctx.systemPrompt());
+                historyGovernor.enforce(ctx.history(), ctx.eventBus());
 
                 // Build system prompt: base + frontend-injected suffix (e.g. output style) + optional plan-mode block
                 String systemPrompt = ctx.effectiveSystemPrompt();
