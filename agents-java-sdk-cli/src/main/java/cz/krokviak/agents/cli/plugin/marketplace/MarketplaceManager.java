@@ -37,15 +37,15 @@ public class MarketplaceManager {
     private final Path pluginsRoot;
     private final Path marketplacesDir;
     private final Path cacheDir;
-    private final Path knownFile;
-    private final Path installedFile;
+    private final MarketplaceRegistryFile knownStore;
+    private final MarketplaceRegistryFile installedStore;
 
     public MarketplaceManager(Path pluginsRoot) {
         this.pluginsRoot = pluginsRoot;
         this.marketplacesDir = pluginsRoot.resolve("marketplaces");
         this.cacheDir = pluginsRoot.resolve("cache");
-        this.knownFile = pluginsRoot.resolve("known_marketplaces.json");
-        this.installedFile = pluginsRoot.resolve("installed_plugins.json");
+        this.knownStore = new MarketplaceRegistryFile(pluginsRoot.resolve("known_marketplaces.json"));
+        this.installedStore = new MarketplaceRegistryFile(pluginsRoot.resolve("installed_plugins.json"));
     }
 
     public MarketplaceManager() {
@@ -472,42 +472,8 @@ public class MarketplaceManager {
         return name.replaceAll("[^a-zA-Z0-9_-]", "-");
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> loadKnown() {
-        try {
-            if (Files.isRegularFile(knownFile)) {
-                return new HashMap<>(MAPPER.readValue(knownFile.toFile(), Map.class));
-            }
-        } catch (Exception ignored) {}
-        return new HashMap<>();
-    }
-
-    private void saveKnown(Map<String, Object> known) {
-        try {
-            Files.createDirectories(knownFile.getParent());
-            MAPPER.writerWithDefaultPrettyPrinter().writeValue(knownFile.toFile(), known);
-        } catch (IOException e) {
-            log.warn( "Failed to save known_marketplaces.json", e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> loadInstalled() {
-        try {
-            if (Files.isRegularFile(installedFile)) {
-                return new HashMap<>(MAPPER.readValue(installedFile.toFile(), Map.class));
-            }
-        } catch (Exception ignored) {}
-        return new HashMap<>();
-    }
-
-    private void saveInstalled(Map<String, Object> installed) {
-        try {
-            Files.createDirectories(installedFile.getParent());
-            MAPPER.writerWithDefaultPrettyPrinter().writeValue(installedFile.toFile(), installed);
-        } catch (IOException e) {
-            log.warn( "Failed to save installed_plugins.json", e);
-        }
-    }
-
+    private Map<String, Object> loadKnown() { return knownStore.load(); }
+    private void saveKnown(Map<String, Object> known) { knownStore.save(known); }
+    private Map<String, Object> loadInstalled() { return installedStore.load(); }
+    private void saveInstalled(Map<String, Object> installed) { installedStore.save(installed); }
 }
