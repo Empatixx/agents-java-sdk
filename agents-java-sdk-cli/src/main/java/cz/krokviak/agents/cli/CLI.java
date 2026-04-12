@@ -49,10 +49,12 @@ public class CLI {
             System.exit(1);
             return;
         }
-        Model model = switch (config.provider()) {
+        Model rawModel = switch (config.provider()) {
             case ANTHROPIC -> new AnthropicModel(config.apiKey(), config.baseUrl(), config.model());
             case OPENAI -> new cz.krokviak.agents.adapter.openai.OpenAIOfficalModel(config.apiKey(), config.baseUrl(), config.model());
         };
+        // Wrap with exponential-backoff retry for transient 429/5xx/network errors.
+        Model model = new cz.krokviak.agents.model.RetryingModel(rawModel);
         Path cwd = config.workingDirectory();
 
         // Memory store — ~/.krok/projects/<cwd-hash>/memory/
