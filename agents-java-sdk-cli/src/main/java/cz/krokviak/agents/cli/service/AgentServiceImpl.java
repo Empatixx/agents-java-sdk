@@ -32,8 +32,15 @@ public final class AgentServiceImpl implements AgentService {
     private final ConcurrentHashMap<String, CompletableFuture<Integer>> pendingQuestions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CompletableFuture<String>> pendingTextInputs = new ConcurrentHashMap<>();
 
+    private volatile cz.krokviak.agents.cli.engine.ToolDispatcher toolDispatcher;
+
     public AgentServiceImpl(CliContext ctx) {
         this.ctx = ctx;
+    }
+
+    /** Plug in the ToolDispatcher so {@link #availableTools()} can list registered tools. */
+    public void setToolDispatcher(cz.krokviak.agents.cli.engine.ToolDispatcher toolDispatcher) {
+        this.toolDispatcher = toolDispatcher;
     }
 
     // -- Turn execution (delegated to AgentRunner in Phase 2; stubbed for now) --
@@ -169,7 +176,11 @@ public final class AgentServiceImpl implements AgentService {
             .toList();
     }
     @Override public List<ToolDescriptor> availableTools() {
-        return List.of(); /* wired in Phase 2 via ToolRegistry */
+        if (toolDispatcher == null) return List.of();
+        return toolDispatcher.all().stream()
+            .map(t -> new ToolDescriptor(t.name(), t.description(),
+                t.definition() != null ? t.definition().parametersSchema() : Map.of()))
+            .toList();
     }
 
     // -- Extension --

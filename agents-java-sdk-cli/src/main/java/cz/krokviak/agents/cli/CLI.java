@@ -167,6 +167,7 @@ public class CLI {
             taskManager, mailboxManager, memoryStore, skillRegistry,
             cronScheduler, agentRegistry, teamManager, planStore, hooks);
         ToolDispatcher toolDispatcher = toolRegistry.dispatcher();
+        agentService.setToolDispatcher(toolDispatcher);
 
         // Commands (20 total)
         Commands commands = new Commands();
@@ -175,7 +176,7 @@ public class CLI {
         commands.register(new CostCommand());
         commands.register(new CompactCommand());
         commands.register(new ModelCommand());
-        commands.register(new ToolsCommand(toolDispatcher));
+        commands.register(new ToolsCommand());
         commands.register(new PermissionsCommand());
         commands.register(new UndoCommand());
         commands.register(new SessionCommand());
