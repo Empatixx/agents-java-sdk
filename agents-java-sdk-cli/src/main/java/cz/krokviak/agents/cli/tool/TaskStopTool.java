@@ -1,6 +1,6 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.api.AgentService;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.ExecutableTool;
 import cz.krokviak.agents.tool.ToolArgs;
@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 public class TaskStopTool implements ExecutableTool {
-    private final TaskManager taskManager;
+    private final AgentService agent;
     private final ToolDefinition toolDefinition;
 
-    public TaskStopTool(TaskManager taskManager) {
-        this.taskManager = taskManager;
+    public TaskStopTool(AgentService agent) {
+        this.agent = agent;
         this.toolDefinition = new ToolDefinition("task_stop",
             "Stop a running or pending task.",
             Map.of("type", "object", "properties", Map.of(
@@ -31,9 +31,8 @@ public class TaskStopTool implements ExecutableTool {
     public ToolOutput execute(ToolArgs args, ToolContext<?> ctx) {
         String taskId = args.get("task_id", String.class);
         if (taskId == null || taskId.isBlank()) return ToolOutput.text("Error: task_id required");
-
-        if (taskManager.get(taskId) == null) return ToolOutput.text("Error: task not found: " + taskId);
-        taskManager.killTask(taskId);
+        if (agent.getTask(taskId) == null) return ToolOutput.text("Error: task not found: " + taskId);
+        agent.stopTask(taskId);
         return ToolOutput.text("Task stopped: " + taskId);
     }
 }

@@ -66,10 +66,10 @@ public final class ToolRegistry {
 
         // Task management
         toolList.add(new TaskCreateTool(ctx.agent()));
-        toolList.add(new TaskGetTool(taskManager));
-        toolList.add(new TaskListTool(taskManager));
+        toolList.add(new TaskGetTool(ctx.agent()));
+        toolList.add(new TaskListTool(ctx.agent()));
         toolList.add(new TaskUpdateTool(ctx.agent()));
-        toolList.add(new TaskStopTool(taskManager));
+        toolList.add(new TaskStopTool(ctx.agent()));
         toolList.add(new TaskOutputTool(taskManager));
 
         // Notebook, skills
