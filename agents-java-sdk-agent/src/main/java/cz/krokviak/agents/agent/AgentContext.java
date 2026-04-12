@@ -54,6 +54,7 @@ public class AgentContext {
     private PlanStore planStore;
     private AdvancedSQLiteSession advancedSession;
     private volatile AgentService agent;
+    private volatile String systemPromptSuffix;
 
     private final java.util.concurrent.ConcurrentHashMap<String, String> properties = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -124,6 +125,24 @@ public class AgentContext {
 
     public void setAgent(AgentService agent) { this.agent = agent; }
     public AgentService agent() { return agent; }
+
+    /**
+     * Dynamic system-prompt addendum appended to {@link #systemPrompt()} on every
+     * turn. Frontends use this to inject persistent behavior modifiers (output
+     * styles, personas, per-session directives) without rebuilding the context.
+     * {@code null} or blank = no suffix.
+     */
+    public void setSystemPromptSuffix(String suffix) { this.systemPromptSuffix = suffix; }
+    public String systemPromptSuffix() { return systemPromptSuffix; }
+
+    /** System prompt with active suffix appended. Engine calls this at turn time. */
+    public String effectiveSystemPrompt() {
+        String base = systemPrompt();
+        String suf = systemPromptSuffix;
+        if (suf == null || suf.isBlank()) return base;
+        if (base == null || base.isBlank()) return suf;
+        return base + "\n\n" + suf;
+    }
 
     public void setProperty(String key, String value) {
         if (value == null) properties.remove(key); else properties.put(key, value);

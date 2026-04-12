@@ -142,6 +142,10 @@ public class CLI {
         agentService.setTeamManager(teamManager);
         agentService.setSpawner(new cz.krokviak.agents.agent.spawn.AgentSpawner(ctx, agentRegistry, taskManager));
 
+        // Load output styles from ~/.claude/output-styles/ + .krok/output-styles/
+        ctx.setOutputStyles(new cz.krokviak.agents.cli.style.OutputStyleRegistry(
+            cz.krokviak.agents.cli.style.OutputStyleLoader.load(cwd)));
+
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {
             ctx.setPromptRenderer(tr);
@@ -179,6 +183,7 @@ public class CLI {
         commands.register(new CompactCommand());
         commands.register(new ModelCommand());
         commands.register(new ToolsCommand());
+        commands.register(new OutputStyleCommand());
         commands.register(new PermissionsCommand());
         commands.register(new UndoCommand());
         commands.register(new SessionCommand());

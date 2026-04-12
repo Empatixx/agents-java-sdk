@@ -52,4 +52,8 @@ public final class CliContext extends AgentContext {
 
     public void setMcpManager(cz.krokviak.agents.cli.mcp.McpManager m) { this.mcpManager = m; }
     public cz.krokviak.agents.cli.mcp.McpManager mcpManager() { return mcpManager; }
+
+    private cz.krokviak.agents.cli.style.OutputStyleRegistry outputStyles;
+    public void setOutputStyles(cz.krokviak.agents.cli.style.OutputStyleRegistry r) { this.outputStyles = r; }
+    public cz.krokviak.agents.cli.style.OutputStyleRegistry outputStyles() { return outputStyles; }
 }

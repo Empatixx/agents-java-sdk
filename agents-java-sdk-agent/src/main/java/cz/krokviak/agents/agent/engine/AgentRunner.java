@@ -50,8 +50,8 @@ public class AgentRunner {
                     ctx.history().addAll(compacted);
                 }
 
-                // Inject plan mode instructions into system prompt if active
-                String systemPrompt = ctx.systemPrompt();
+                // Build system prompt: base + frontend-injected suffix (e.g. output style) + optional plan-mode block
+                String systemPrompt = ctx.effectiveSystemPrompt();
                 if (ctx.isPlanMode() && ctx.planStore() != null) {
                     String planPath = ctx.planStore().currentPlanPath();
                     if (planPath == null) planPath = "~/.krok/plans/<plan>.md";
