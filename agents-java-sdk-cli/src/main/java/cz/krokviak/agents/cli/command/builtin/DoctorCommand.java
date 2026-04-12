@@ -25,15 +25,16 @@ public class DoctorCommand implements Command {
             true);
 
         // Model
-        check(ctx, "Model", ctx.modelId(), ctx.modelId() != null && !ctx.modelId().isBlank());
+        var modelId = ctx.agent().currentModel().id();
+        check(ctx, "Model", modelId, modelId != null && !modelId.isBlank());
 
         // API key
         check(ctx, "API key set", ctx.apiKey() != null ? "***" + ctx.apiKey().substring(Math.max(0, ctx.apiKey().length() - 4)) : "NOT SET",
             ctx.apiKey() != null && !ctx.apiKey().isBlank());
 
         // Session
-        check(ctx, "Session", ctx.sessionId() != null ? ctx.sessionId() : "none",
-            true);
+        String sid = ctx.agent().currentSessionId();
+        check(ctx, "Session", sid != null ? sid : "none", true);
 
         // AGENTS.md
         boolean hasAgentsMd = Files.exists(ctx.workingDirectory().resolve("AGENTS.md")) ||
@@ -41,11 +42,13 @@ public class DoctorCommand implements Command {
         check(ctx, "AGENTS.md", hasAgentsMd ? "found" : "not found", true);
 
         // History size
-        check(ctx, "History", ctx.history().size() + " messages", ctx.history().size() < 500);
+        int histSize = ctx.agent().history().size();
+        check(ctx, "History", histSize + " messages", histSize < 500);
 
         // Tasks
-        var running = ctx.taskManager().running();
-        check(ctx, "Background tasks", running.size() + " running", true);
+        long running = ctx.agent().listTasks().stream()
+            .filter(t -> "RUNNING".equals(t.status())).count();
+        check(ctx, "Background tasks", running + " running", true);
 
         ctx.output().println("\nDiagnostics complete.");
     }

@@ -8,7 +8,7 @@ public class ExitCommand implements Command {
     @Override public String description() { return "Exit the CLI"; }
     @Override public void execute(String args, CliContext ctx) {
         ctx.output().println("Goodbye!");
-        ctx.output().printUsage(ctx.costTracker().format());
+        ctx.output().printUsage(ctx.agent().costs().formatted());
         System.exit(0);
     }
 }

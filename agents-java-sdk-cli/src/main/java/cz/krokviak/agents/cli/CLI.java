@@ -180,7 +180,7 @@ public class CLI {
         commands.register(new UndoCommand());
         commands.register(new SessionCommand());
         commands.register(new ResumeCommand());
-        commands.register(new TasksCommand(taskManager));
+        commands.register(new TasksCommand());
         commands.register(new PlanCommand(planStore));
         commands.register(new DiffCommand());
         commands.register(new ContextCommand());

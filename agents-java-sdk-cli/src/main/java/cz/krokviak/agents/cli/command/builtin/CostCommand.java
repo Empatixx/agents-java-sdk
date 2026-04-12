@@ -7,6 +7,6 @@ public class CostCommand implements Command {
     @Override public List<String> aliases() { return List.of("usage"); }
     @Override public String description() { return "Show token usage and cost"; }
     @Override public void execute(String args, CliContext ctx) {
-        ctx.output().printUsage(ctx.costTracker().format());
+        ctx.output().printUsage(ctx.agent().costs().formatted());
     }
 }

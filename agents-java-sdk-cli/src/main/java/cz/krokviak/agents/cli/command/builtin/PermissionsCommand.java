@@ -7,7 +7,11 @@ public class PermissionsCommand implements Command {
     @Override public List<String> aliases() { return List.of("perms"); }
     @Override public String description() { return "Show permission rules"; }
     @Override public void execute(String args, CliContext ctx) {
-        if (ctx.permissions() != null) { ctx.permissions().listRules(ctx.output()); }
-        else { ctx.output().println("Permission system not active (trust mode)."); }
+        var rules = ctx.agent().permissionRules();
+        if (rules.isEmpty()) { ctx.output().println("No session permission rules."); return; }
+        ctx.output().println("Session permission rules:");
+        for (var r : rules) {
+            ctx.output().println("  " + r.mode() + " " + r.pattern());
+        }
     }
 }

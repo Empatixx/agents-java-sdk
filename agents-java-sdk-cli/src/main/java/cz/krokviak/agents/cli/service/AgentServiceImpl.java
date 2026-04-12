@@ -158,12 +158,15 @@ public final class AgentServiceImpl implements AgentService {
 
     // -- Introspection --
     @Override public CostSummary costs() {
-        /* mapped against CostTracker API in Phase 2 */
-        return new CostSummary(0L, 0L, 0.0, "");
+        var t = ctx.costTracker();
+        return new CostSummary(t.totalInputTokens(), t.totalOutputTokens(), t.totalCostUsd(), t.format());
     }
     @Override public List<PermissionRule> permissionRules() {
-        /* mapped against PermissionManager API in Phase 2 */
-        return List.of();
+        return ctx.permissions().sessionRules().stream()
+            .map(r -> new PermissionRule(
+                r.toolName() + (r.pattern() != null ? "[" + r.pattern() + "]" : ""),
+                r.behavior().name()))
+            .toList();
     }
     @Override public List<ToolDescriptor> availableTools() {
         return List.of(); /* wired in Phase 2 via ToolRegistry */
