@@ -1,9 +1,9 @@
 package cz.krokviak.agents.cli.command.builtin;
 
+import cz.krokviak.agents.api.dto.SessionInfo;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.render.PromptRenderer;
-import cz.krokviak.agents.session.SessionMetadata;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -21,15 +21,8 @@ public class ResumeCommand implements Command {
 
     @Override
     public void execute(String args, CliContext ctx) {
-        var advanced = ctx.advancedSession();
-        if (advanced == null) {
-            ctx.output().printError("No session backend available.");
-            return;
-        }
-
-        List<SessionMetadata> sessions = advanced.listSessionsWithMetadata();
         String currentId = ctx.agent().currentSessionId();
-        sessions = sessions.stream()
+        List<SessionInfo> sessions = ctx.agent().listSessions().stream()
             .filter(s -> !s.sessionId().equals(currentId))
             .toList();
 
@@ -38,25 +31,21 @@ public class ResumeCommand implements Command {
             return;
         }
 
-        // Direct selection by arg
         if (args != null && !args.isBlank()) {
-            String arg = args.trim();
-            SessionMetadata selected = matchSession(arg, sessions);
+            SessionInfo selected = matchSession(args.trim(), sessions);
             if (selected == null) {
-                ctx.output().printError("No session matching '" + arg + "'.");
+                ctx.output().printError("No session matching '" + args.trim() + "'.");
                 return;
             }
             resumeSession(ctx, selected);
             return;
         }
 
-        // Interactive TUI selector
         PromptRenderer renderer = ctx.promptRenderer();
         int limit = Math.min(sessions.size(), 8);
-        List<SessionMetadata> visible = sessions.subList(0, limit);
+        List<SessionInfo> visible = sessions.subList(0, limit);
 
         String[] options = new String[visible.size() + 1];
-        // First option: back/cancel — easy to see at top
         options[0] = "Back";
         for (int i = 0; i < visible.size(); i++) {
             options[i + 1] = formatSessionLine(visible.get(i));
@@ -70,7 +59,6 @@ public class ResumeCommand implements Command {
             }
             resumeSession(ctx, visible.get(selected - 1));
         } else {
-            // Plain mode fallback
             ctx.output().println("Recent sessions:");
             for (int i = 0; i < visible.size(); i++) {
                 ctx.output().println("  " + (i + 1) + ". " + formatSessionLine(visible.get(i)));
@@ -79,14 +67,14 @@ public class ResumeCommand implements Command {
         }
     }
 
-    private String formatSessionLine(SessionMetadata s) {
+    private String formatSessionLine(SessionInfo s) {
         String title = s.title() != null ? truncate(s.title(), 50) : "(untitled)";
-        String date = DATE_FMT.format(s.lastActivityAt());
+        String date = s.lastActivityAt() != null ? DATE_FMT.format(s.lastActivityAt()) : "?";
         String ago = formatTimeAgo(s.lastActivityAt());
         return String.format("%s  %s (%s)  %d msgs", title, date, ago, s.messageCount());
     }
 
-    private void resumeSession(CliContext ctx, SessionMetadata meta) {
+    private void resumeSession(CliContext ctx, SessionInfo meta) {
         ctx.agent().loadSession(meta.sessionId()).join();
         var loaded = ctx.agent().history().items();
 
@@ -95,7 +83,6 @@ public class ResumeCommand implements Command {
         ctx.output().println("Resumed: " + title);
         ctx.output().println("  " + loaded.size() + " messages loaded | " + formatTimeAgo(meta.lastActivityAt()));
 
-        // Show last user message for context
         for (int i = loaded.size() - 1; i >= 0; i--) {
             if (loaded.get(i) instanceof cz.krokviak.agents.runner.InputItem.UserMessage msg) {
                 String content = msg.content();
@@ -107,7 +94,7 @@ public class ResumeCommand implements Command {
         ctx.output().println("");
     }
 
-    private SessionMetadata matchSession(String arg, List<SessionMetadata> sessions) {
+    private SessionInfo matchSession(String arg, List<SessionInfo> sessions) {
         try {
             int idx = Integer.parseInt(arg) - 1;
             if (idx >= 0 && idx < sessions.size()) return sessions.get(idx);

@@ -128,8 +128,14 @@ public final class AgentServiceImpl implements AgentService {
 
     // -- Sessions --
     @Override public List<SessionInfo> listSessions() {
-        /* wired in Phase 2 — shape of AdvancedSQLiteSession.listSessionsWithMetadata() to be mapped */
-        return List.of();
+        var adv = ctx.advancedSession();
+        if (adv == null) return List.of();
+        return adv.listSessionsWithMetadata().stream()
+            .map(m -> new SessionInfo(
+                m.sessionId(), /*modelId*/ null, m.title(),
+                m.createdAt(), m.lastActivityAt(), m.messageCount(),
+                /*preview*/ null))
+            .toList();
     }
     @Override public CompletableFuture<Void> loadSession(String sessionId) {
         return CompletableFuture.runAsync(() -> {
