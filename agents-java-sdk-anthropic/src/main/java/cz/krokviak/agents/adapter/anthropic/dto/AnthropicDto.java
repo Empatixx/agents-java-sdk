@@ -1,4 +1,4 @@
-package cz.krokviak.agents.model.dto;
+package cz.krokviak.agents.adapter.anthropic.dto;
 
 import com.fasterxml.jackson.annotation.*;
 

@@ -1,4 +1,4 @@
-package cz.krokviak.agents.agent;
+package cz.krokviak.agents.def;
 
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.guardrail.InputGuardrail;

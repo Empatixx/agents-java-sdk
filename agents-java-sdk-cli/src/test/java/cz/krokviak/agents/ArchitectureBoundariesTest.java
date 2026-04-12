@@ -34,12 +34,6 @@ class ArchitectureBoundariesTest {
                     "cz.krokviak.agents.session..",
                     "cz.krokviak.agents.util..")
                 // The above selects -core (non-namespaced packages: runner, model, tool, context, handoff, ...).
-                // AnthropicModel and OpenAI* currently live in core namespace (see architecture review C2
-                // finding — adapter namespace cleanup). They're explicitly excluded until that refactor lands.
-                .and().haveNameNotMatching("cz\\.krokviak\\.agents\\.model\\.Anthropic.*")
-                .and().haveNameNotMatching("cz\\.krokviak\\.agents\\.model\\.OpenAI.*")
-                .and().haveNameNotMatching("cz\\.krokviak\\.agents\\.model\\.dto\\..*")
-                .and().haveNameNotMatching("cz\\.krokviak\\.agents\\.tracing\\.OpenAI.*")
             .should().dependOnClassesThat().resideInAnyPackage(
                 "cz.krokviak.agents.cli..",
                 "cz.krokviak.agents.agent..",

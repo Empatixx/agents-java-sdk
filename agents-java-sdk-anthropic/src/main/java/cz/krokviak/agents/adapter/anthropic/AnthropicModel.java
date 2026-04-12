@@ -1,9 +1,15 @@
-package cz.krokviak.agents.model;
+package cz.krokviak.agents.adapter.anthropic;
+import cz.krokviak.agents.model.Usage;
+import cz.krokviak.agents.model.LlmContext;
+import cz.krokviak.agents.model.ModelSettings;
+import cz.krokviak.agents.model.ModelResponseStream;
+import cz.krokviak.agents.model.ModelResponse;
+import cz.krokviak.agents.model.Model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.krokviak.agents.exception.ContextTooLongException;
 import cz.krokviak.agents.http.SseParser;
-import cz.krokviak.agents.model.dto.AnthropicDto;
+import cz.krokviak.agents.adapter.anthropic.dto.AnthropicDto;
 import cz.krokviak.agents.runner.InputItem;
 import cz.krokviak.agents.tool.ToolDefinition;
 

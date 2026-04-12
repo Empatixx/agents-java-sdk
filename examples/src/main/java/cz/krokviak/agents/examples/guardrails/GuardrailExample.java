@@ -1,11 +1,11 @@
 package cz.krokviak.agents.examples.guardrails;
 
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.exception.InputGuardrailTrippedException;
 import cz.krokviak.agents.guardrail.GuardrailResult;
 import cz.krokviak.agents.guardrail.InputGuardrail;
 import cz.krokviak.agents.guardrail.OutputGuardrail;
-import cz.krokviak.agents.model.OpenAIResponsesModel;
+import cz.krokviak.agents.adapter.openai.OpenAIResponsesModel;
 import cz.krokviak.agents.runner.Runner;
 
 import java.util.List;

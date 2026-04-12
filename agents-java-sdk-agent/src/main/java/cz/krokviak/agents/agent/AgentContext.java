@@ -10,7 +10,7 @@ import cz.krokviak.agents.agent.permission.PermissionManager;
 import cz.krokviak.agents.agent.plan.PlanStore;
 import cz.krokviak.agents.agent.task.TaskManager;
 import cz.krokviak.agents.api.AgentService;
-import cz.krokviak.agents.model.AnthropicModel;
+import cz.krokviak.agents.adapter.anthropic.AnthropicModel;
 import cz.krokviak.agents.model.Model;
 import cz.krokviak.agents.model.ModelSettings;
 import cz.krokviak.agents.runner.InputItem;

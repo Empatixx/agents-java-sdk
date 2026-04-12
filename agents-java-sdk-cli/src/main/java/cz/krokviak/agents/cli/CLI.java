@@ -26,7 +26,7 @@ import cz.krokviak.agents.cli.render.PlainRenderer;
 import cz.krokviak.agents.cli.render.Renderer;
 import cz.krokviak.agents.cli.skill.SkillLoader;
 import cz.krokviak.agents.cli.skill.SkillRegistry;
-import cz.krokviak.agents.model.AnthropicModel;
+import cz.krokviak.agents.adapter.anthropic.AnthropicModel;
 import cz.krokviak.agents.model.Model;
 import cz.krokviak.agents.session.AdvancedSQLiteSession;
 import cz.krokviak.agents.session.Session;
@@ -51,7 +51,7 @@ public class CLI {
         }
         Model model = switch (config.provider()) {
             case ANTHROPIC -> new AnthropicModel(config.apiKey(), config.baseUrl(), config.model());
-            case OPENAI -> new cz.krokviak.agents.model.OpenAIOfficalModel(config.apiKey(), config.baseUrl(), config.model());
+            case OPENAI -> new cz.krokviak.agents.adapter.openai.OpenAIOfficalModel(config.apiKey(), config.baseUrl(), config.model());
         };
         Path cwd = config.workingDirectory();
 

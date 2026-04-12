@@ -1,4 +1,4 @@
-package cz.krokviak.agents.agent;
+package cz.krokviak.agents.def;
 
 import cz.krokviak.agents.tool.Tool;
 import cz.krokviak.agents.tool.Tools;

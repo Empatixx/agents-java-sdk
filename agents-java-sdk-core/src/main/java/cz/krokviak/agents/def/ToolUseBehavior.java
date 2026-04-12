@@ -1,4 +1,4 @@
-package cz.krokviak.agents.agent;
+package cz.krokviak.agents.def;
 
 public enum ToolUseBehavior {
     RUN_LLM_AGAIN,

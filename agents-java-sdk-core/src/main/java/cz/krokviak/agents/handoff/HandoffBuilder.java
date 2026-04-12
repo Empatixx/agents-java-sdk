@@ -1,6 +1,6 @@
 package cz.krokviak.agents.handoff;
 
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.runner.InputItem;
 

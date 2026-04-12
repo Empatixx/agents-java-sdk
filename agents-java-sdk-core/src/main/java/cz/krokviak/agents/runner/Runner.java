@@ -1,6 +1,6 @@
 package cz.krokviak.agents.runner;
 
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.model.Model;
 import cz.krokviak.agents.streaming.EventStream;

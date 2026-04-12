@@ -1,7 +1,7 @@
 package cz.krokviak.agents.examples.tools;
 
-import cz.krokviak.agents.agent.Agent;
-import cz.krokviak.agents.model.OpenAIResponsesModel;
+import cz.krokviak.agents.def.Agent;
+import cz.krokviak.agents.adapter.openai.OpenAIResponsesModel;
 import cz.krokviak.agents.runner.Runner;
 import cz.krokviak.agents.tool.*;
 

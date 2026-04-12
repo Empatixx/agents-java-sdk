@@ -192,7 +192,7 @@ public final class AgentServiceImpl implements AgentService {
         }
         var tools = toolDispatcher != null ? toolDispatcher.all() : List.<cz.krokviak.agents.tool.ExecutableTool>of();
         var model = req.modelOverride() != null && !req.modelOverride().isBlank()
-            ? new cz.krokviak.agents.model.AnthropicModel(ctx.apiKey(), ctx.baseUrl(), req.modelOverride())
+            ? new cz.krokviak.agents.adapter.anthropic.AnthropicModel(ctx.apiKey(), ctx.baseUrl(), req.modelOverride())
             : ctx.model();
         int maxTurns = req.maxTurns() != null ? Math.min(req.maxTurns(), 100) : 15;
         var progress = new cz.krokviak.agents.agent.spawn.ProgressTracker();

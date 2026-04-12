@@ -1,4 +1,10 @@
-package cz.krokviak.agents.model;
+package cz.krokviak.agents.adapter.openai;
+import cz.krokviak.agents.model.Usage;
+import cz.krokviak.agents.model.LlmContext;
+import cz.krokviak.agents.model.ModelSettings;
+import cz.krokviak.agents.model.ModelResponseStream;
+import cz.krokviak.agents.model.ModelResponse;
+import cz.krokviak.agents.model.Model;
 
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;

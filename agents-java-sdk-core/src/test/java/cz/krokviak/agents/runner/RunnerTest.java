@@ -1,6 +1,6 @@
 package cz.krokviak.agents.runner;
 
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.session.InMemorySession;
 import cz.krokviak.agents.tool.Tools;

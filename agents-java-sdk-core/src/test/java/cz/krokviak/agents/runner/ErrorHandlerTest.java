@@ -1,6 +1,6 @@
 package cz.krokviak.agents.runner;
 
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.exception.MaxTurnsExceededException;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.tool.ToolOutput;

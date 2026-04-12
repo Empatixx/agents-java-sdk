@@ -1,4 +1,4 @@
-package cz.krokviak.agents.model;
+package cz.krokviak.agents.adapter.anthropic;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

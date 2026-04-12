@@ -1,4 +1,9 @@
-package cz.krokviak.agents.tracing;
+package cz.krokviak.agents.adapter.openai.tracing;
+import cz.krokviak.agents.tracing.ToolSpanData;
+import cz.krokviak.agents.tracing.GenerationSpanData;
+import cz.krokviak.agents.tracing.AgentSpanData;
+import cz.krokviak.agents.tracing.SpanData;
+import cz.krokviak.agents.tracing.SpanExporter;
 
 import cz.krokviak.agents.http.AgentHttpClient;
 import org.slf4j.Logger;

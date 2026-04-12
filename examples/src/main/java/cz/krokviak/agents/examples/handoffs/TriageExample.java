@@ -1,8 +1,8 @@
 package cz.krokviak.agents.examples.handoffs;
 
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.handoff.Handoff;
-import cz.krokviak.agents.model.OpenAIResponsesModel;
+import cz.krokviak.agents.adapter.openai.OpenAIResponsesModel;
 import cz.krokviak.agents.runner.Runner;
 
 import java.util.List;

@@ -1,7 +1,7 @@
 package cz.krokviak.agents.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.context.RunContext;
 import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.runner.AgentLoop;

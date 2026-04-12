@@ -1,6 +1,6 @@
 package cz.krokviak.agents.streaming;
 
-import cz.krokviak.agents.agent.Agent;
+import cz.krokviak.agents.def.Agent;
 import cz.krokviak.agents.runner.RunItem;
 import cz.krokviak.agents.runner.RunResult;
 import cz.krokviak.agents.tool.ToolOutput;
