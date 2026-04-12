@@ -146,6 +146,12 @@ public class CLI {
         ctx.setOutputStyles(new cz.krokviak.agents.cli.style.OutputStyleRegistry(
             cz.krokviak.agents.cli.style.OutputStyleLoader.load(cwd)));
 
+        // Install tips scheduler — one hint per spinner cycle, least-recently-shown.
+        var tipRegistry = new cz.krokviak.agents.cli.tips.TipRegistry(
+            cz.krokviak.agents.cli.tips.TipLoader.loadAll());
+        new cz.krokviak.agents.cli.tips.TipScheduler(output, tipRegistry)
+            .install(agentService.events());
+
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {
             ctx.setPromptRenderer(tr);
