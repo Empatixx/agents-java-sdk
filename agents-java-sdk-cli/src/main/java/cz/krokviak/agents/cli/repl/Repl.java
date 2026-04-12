@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.repl;
 
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
@@ -176,7 +178,7 @@ public class Repl {
                 var img = imgHandler.processImagePath(input);
                 ctx.history().add(img);
                 imageCounter++;
-                ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ImageAttached(
+                ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ImageAttached(
                     img.filePath(), imageCounter));
                 return "[Image #" + imageCounter + "] attached. " +
                     (img.description() != null ? img.description() : "Please analyze it.");
@@ -192,7 +194,7 @@ public class Repl {
                 if (clipImg != null) {
                     ctx.history().add(clipImg);
                     imageCounter++;
-                    ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ImageAttached(
+                    ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ImageAttached(
                         clipImg.filePath(), imageCounter));
                     return "[Image #" + imageCounter + "] attached from clipboard. Please analyze it.";
                 }

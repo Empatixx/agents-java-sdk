@@ -1,5 +1,8 @@
 package cz.krokviak.agents.cli.hook.builtin;
 
+import cz.krokviak.agents.api.hook.HookPhase;
+import cz.krokviak.agents.api.hook.HookResult;
+
 import cz.krokviak.agents.cli.hook.*;
 import cz.krokviak.agents.cli.permission.PermissionManager;
 
@@ -11,7 +14,7 @@ public class PermissionHook implements Hook {
     }
 
     @Override
-    public Phase phase() { return Phase.PRE_TOOL; }
+    public HookPhase phase() { return HookPhase.PRE_TOOL; }
 
     @Override
     public HookResult execute(ToolUseEvent event) {

@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.agent;
 
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.mailbox.MailboxManager;
 import cz.krokviak.agents.cli.render.AgentStatus;
@@ -41,17 +43,17 @@ public class AgentSpawner {
         agent.setStatus(AgentStatus.RUNNING);
         registry.register(name, agent);
 
-        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentStarted(name, name));
+        ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentStarted(name, name));
 
         try {
             String result = runLoop(name, prompt, tools, model, progress, agent, maxTurns);
             agent.setStatus(AgentStatus.COMPLETED);
-            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentCompleted(name, result.length() > 200 ? result.substring(0, 200) : result));
+            ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentCompleted(name, result.length() > 200 ? result.substring(0, 200) : result));
             registry.remove(name);
             return result;
         } catch (Exception e) {
             agent.setStatus(AgentStatus.FAILED);
-            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentFailed(name, e.getMessage()));
+            ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentFailed(name, e.getMessage()));
             registry.remove(name);
             return "Error: " + e.getMessage();
         }
@@ -69,7 +71,7 @@ public class AgentSpawner {
         TaskState task = new TaskState(taskId, name);
         taskManager.register(task);
 
-        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentStarted(name, "background"));
+        ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentStarted(name, "background"));
 
         Thread thread = Thread.startVirtualThread(() -> {
             agent.setStatus(AgentStatus.RUNNING);
@@ -100,7 +102,7 @@ public class AgentSpawner {
      */
     public RunningAgent spawnIsolated(String name, String prompt, List<ExecutableTool> tools,
                                       Model model, ProgressTracker progress, String worktreePath) {
-        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.AgentStarted(name, "isolated:" + worktreePath));
+        ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentStarted(name, "isolated:" + worktreePath));
         return spawnBackground(name, prompt, tools, model, progress, 15);
     }
 
@@ -172,7 +174,7 @@ public class AgentSpawner {
 
             var bus = ctx.eventBus();
             for (var tc : tcs) {
-                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(
+                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolStarted(
                     tc.name(), tc.arguments(), tc.id(), true));
                 long startNanos = System.nanoTime();
 
@@ -183,13 +185,13 @@ public class AgentSpawner {
                 history.add(new InputItem.ToolResult(tc.id(), tc.name(), result));
 
                 long ms = (System.nanoTime() - startNanos) / 1_000_000;
-                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolCompleted(
                     tc.name(), result, result.split("\n", -1).length, ms));
 
                 if (progress != null) progress.addToolUse();
                 agent.addToolUse();
                 if (progress != null) {
-                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.AgentProgress(
+                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.AgentProgress(
                         agentId, progress.getProgressLine()));
                 }
             }

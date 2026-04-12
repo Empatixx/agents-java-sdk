@@ -1,5 +1,10 @@
 package cz.krokviak.agents.cli.engine;
 
+import cz.krokviak.agents.api.hook.HookPhase;
+import cz.krokviak.agents.api.hook.HookResult;
+
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
@@ -31,7 +36,7 @@ public class ToolDispatcher {
      */
     public String executeTool(String toolName, Map<String, Object> arguments, String toolCallId) {
         // PRE_TOOL hook
-        HookResult hookResult = hooks.dispatch(Hook.Phase.PRE_TOOL,
+        HookResult hookResult = hooks.dispatch(HookPhase.PRE_TOOL,
             ToolUseEvent.preTool(toolName, arguments, ctx, toolCallId));
         if (hookResult instanceof HookResult.Block block) {
             return "Permission denied: " + block.reason();
@@ -48,7 +53,7 @@ public class ToolDispatcher {
             };
 
             // POST_TOOL hook
-            hooks.dispatch(Hook.Phase.POST_TOOL,
+            hooks.dispatch(HookPhase.POST_TOOL,
                 ToolUseEvent.postTool(toolName, arguments, ctx, toolCallId, ToolOutput.text(resultText)));
 
             return resultText;
@@ -84,7 +89,7 @@ public class ToolDispatcher {
 
     private void executeAndRecord(InputItem.ToolCall toolCall, List<RunItem> newItems) {
         var bus = ctx.eventBus();
-        bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(
+        bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolStarted(
             toolCall.name(), toolCall.arguments(), toolCall.id(), false));
         long startNanos = System.nanoTime();
 
@@ -92,11 +97,11 @@ public class ToolDispatcher {
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
 
         if (resultText.startsWith("Permission denied")) {
-            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolBlocked(
+            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolBlocked(
                 toolCall.name(), resultText));
         } else {
             int lines = resultText.split("\n", -1).length;
-            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolCompleted(
                 toolCall.name(), resultText, lines, ms));
         }
 

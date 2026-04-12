@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.plugin;
 
+import cz.krokviak.agents.api.hook.HookPhase;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -111,7 +113,7 @@ class PluginLoaderTest {
 
         assertEquals(1, plugin.hooks().size());
         var hook = plugin.hooks().getFirst();
-        assertEquals(cz.krokviak.agents.cli.hook.Hook.Phase.PRE_TOOL, hook.phase());
+        assertEquals(cz.krokviak.agents.api.hook.HookPhase.PRE_TOOL, hook.phase());
     }
 
     @Test
@@ -137,7 +139,7 @@ class PluginLoaderTest {
         var plugin = PluginLoader.loadPlugin(pluginDir, pluginDir.resolve("plugin.json"));
 
         assertEquals(1, plugin.hooks().size());
-        assertEquals(cz.krokviak.agents.cli.hook.Hook.Phase.POST_TOOL, plugin.hooks().getFirst().phase());
+        assertEquals(cz.krokviak.agents.api.hook.HookPhase.POST_TOOL, plugin.hooks().getFirst().phase());
     }
 
     @Test

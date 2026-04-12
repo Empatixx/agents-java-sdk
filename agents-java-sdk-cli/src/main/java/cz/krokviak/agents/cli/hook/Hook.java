@@ -1,7 +1,12 @@
 package cz.krokviak.agents.cli.hook;
 
-public interface Hook {
-    enum Phase { PRE_TOOL, POST_TOOL, PRE_MODEL, POST_MODEL }
-    Phase phase();
-    HookResult execute(ToolUseEvent event);
+import cz.krokviak.agents.api.hook.HookPhase;
+
+/**
+ * CLI-side specialisation of {@link cz.krokviak.agents.api.hook.Hook}
+ * bound to {@link ToolUseEvent} (carries a CliContext alongside the tool call).
+ */
+public interface Hook extends cz.krokviak.agents.api.hook.Hook<ToolUseEvent> {
+    @Override
+    HookPhase phase();
 }

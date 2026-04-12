@@ -1,5 +1,8 @@
 package cz.krokviak.agents.cli.hook.builtin;
 
+import cz.krokviak.agents.api.hook.HookPhase;
+import cz.krokviak.agents.api.hook.HookResult;
+
 import cz.krokviak.agents.cli.hook.*;
 import cz.krokviak.agents.cli.plan.PlanStore;
 import cz.krokviak.agents.cli.tool.ToolClassifier;
@@ -22,7 +25,7 @@ public class PlanModeHook implements Hook {
         this.planStore = planStore;
     }
 
-    @Override public Phase phase() { return Phase.PRE_TOOL; }
+    @Override public HookPhase phase() { return HookPhase.PRE_TOOL; }
 
     @Override
     public HookResult execute(ToolUseEvent event) {

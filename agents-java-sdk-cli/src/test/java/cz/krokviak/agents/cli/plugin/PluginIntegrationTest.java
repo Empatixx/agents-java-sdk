@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.plugin;
 
+import cz.krokviak.agents.api.hook.HookPhase;
+
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.command.Commands;
 import cz.krokviak.agents.cli.hook.Hook;
@@ -131,13 +133,13 @@ class PluginIntegrationTest {
 
         // Hook should block "rm -rf /"
         var event = ToolUseEvent.preTool("Bash", Map.of("command", "rm -rf /"), null, "tc-1");
-        var result = hooks.dispatch(Hook.Phase.PRE_TOOL, event);
-        assertInstanceOf(cz.krokviak.agents.cli.hook.HookResult.Block.class, result);
+        var result = hooks.dispatch(HookPhase.PRE_TOOL, event);
+        assertInstanceOf(cz.krokviak.agents.api.hook.HookResult.Block.class, result);
 
         // Hook should NOT block "echo hello"
         var safeEvent = ToolUseEvent.preTool("Bash", Map.of("command", "echo hello"), null, "tc-2");
-        var safeResult = hooks.dispatch(Hook.Phase.PRE_TOOL, safeEvent);
-        assertInstanceOf(cz.krokviak.agents.cli.hook.HookResult.Proceed.class, safeResult);
+        var safeResult = hooks.dispatch(HookPhase.PRE_TOOL, safeEvent);
+        assertInstanceOf(cz.krokviak.agents.api.hook.HookResult.Proceed.class, safeResult);
     }
 
     @Test

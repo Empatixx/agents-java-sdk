@@ -132,4 +132,13 @@ public final class CliContext {
         if (value == null) properties.remove(key); else properties.put(key, value);
     }
     public String getProperty(String key) { return properties.get(key); }
+
+    private volatile cz.krokviak.agents.api.AgentService agent;
+    /**
+     * Set the {@link cz.krokviak.agents.api.AgentService} facade. Assigned once during
+     * CLI bootstrap after managers are constructed. UI-only components should reach
+     * agent-lifecycle operations exclusively through this handle.
+     */
+    public void setAgent(cz.krokviak.agents.api.AgentService agent) { this.agent = agent; }
+    public cz.krokviak.agents.api.AgentService agent() { return agent; }
 }

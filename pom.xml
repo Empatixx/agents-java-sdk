@@ -15,6 +15,7 @@
         <module>agents-java-sdk-mcp</module>
         <module>agents-java-sdk-sessions</module>
         <module>agents-java-sdk-anthropic</module>
+        <module>agents-java-sdk-agent-api</module>
         <module>agents-java-sdk-cli</module>
         <module>examples</module>
     </modules>
@@ -82,6 +83,11 @@
             <dependency>
                 <groupId>cz.krokviak</groupId>
                 <artifactId>agents-java-sdk-anthropic</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cz.krokviak</groupId>
+                <artifactId>agents-java-sdk-agent-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.engine;
 
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -66,7 +68,7 @@ public class StreamingToolExecutor {
         String name = toolCallNames.get(id);
         if (name != null && ToolClassifier.isReadOnly(name)) {
             Map<String, Object> args = parseArgs(id);
-            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(name, args, id, false));
+            ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ToolStarted(name, args, id, false));
             pendingResults.put(id, CompletableFuture.supplyAsync(
                 () -> executeWithHooks(id, name, args), executor));
         }
@@ -96,20 +98,20 @@ public class StreamingToolExecutor {
                         "Error: tool execution timed out or failed: " + e.getMessage());
                 }
                 int lines = result.resultText().split("\n", -1).length;
-                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolCompleted(
                     result.toolName(), result.resultText(), lines, 0));
             } else {
                 // Exclusive: execute now, serially
-                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolStarted(
+                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolStarted(
                     tc.name(), tc.arguments(), tc.id(), false));
                 long start = System.nanoTime();
                 result = executeWithHooks(tc.id(), tc.name(), tc.arguments());
                 long ms = (System.nanoTime() - start) / 1_000_000;
                 if (result.resultText().startsWith("Permission denied")) {
-                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolBlocked(tc.name(), result.resultText()));
+                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolBlocked(tc.name(), result.resultText()));
                 } else {
                     int lines = result.resultText().split("\n", -1).length;
-                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ToolCompleted(
+                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ToolCompleted(
                         tc.name(), result.resultText(), lines, ms));
                 }
             }

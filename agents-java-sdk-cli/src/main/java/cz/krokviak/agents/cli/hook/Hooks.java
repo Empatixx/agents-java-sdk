@@ -1,18 +1,21 @@
 package cz.krokviak.agents.cli.hook;
 
+import cz.krokviak.agents.api.hook.HookPhase;
+import cz.krokviak.agents.api.hook.HookResult;
+
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
 public final class Hooks {
-    private final Map<Hook.Phase, List<Hook>> hooks = new EnumMap<>(Hook.Phase.class);
+    private final Map<HookPhase, List<Hook>> hooks = new EnumMap<>(HookPhase.class);
 
     public void register(Hook hook) {
         hooks.computeIfAbsent(hook.phase(), _ -> new ArrayList<>()).add(hook);
     }
 
-    public HookResult dispatch(Hook.Phase phase, ToolUseEvent event) {
+    public HookResult dispatch(HookPhase phase, ToolUseEvent event) {
         List<Hook> phaseHooks = hooks.getOrDefault(phase, List.of());
         for (Hook hook : phaseHooks) {
             HookResult result = hook.execute(event);

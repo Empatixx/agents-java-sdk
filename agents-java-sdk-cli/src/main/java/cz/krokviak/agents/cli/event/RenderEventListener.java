@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.event;
 
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import cz.krokviak.agents.cli.render.Renderer;
 
 /**
@@ -18,42 +20,42 @@ public final class RenderEventListener {
         bus.subscribe(this::handle);
     }
 
-    private void handle(CliEvent event) {
+    private void handle(AgentEvent event) {
         switch (event) {
-            case CliEvent.ToolStarted e ->
+            case AgentEvent.ToolStarted e ->
                 renderer.printToolCall(e.name(), e.args());
-            case CliEvent.ToolCompleted e ->
+            case AgentEvent.ToolCompleted e ->
                 renderer.printToolResult(e.name(), e.result());
-            case CliEvent.ToolBlocked e ->
+            case AgentEvent.ToolBlocked e ->
                 renderer.printPermissionDenied(e.name());
-            case CliEvent.AgentStarted e -> {
+            case AgentEvent.AgentStarted e -> {
                 renderer.setCurrentAgent(e.agentId());
                 renderer.renderAgentStatus(e.agentId(),
                     cz.krokviak.agents.cli.render.AgentStatus.RUNNING, e.description());
             }
-            case CliEvent.AgentCompleted e -> {
+            case AgentEvent.AgentCompleted e -> {
                 renderer.renderAgentStatus(e.agentId(),
                     cz.krokviak.agents.cli.render.AgentStatus.COMPLETED, "done");
                 renderer.clearCurrentAgent();
             }
-            case CliEvent.AgentFailed e -> {
+            case AgentEvent.AgentFailed e -> {
                 renderer.renderAgentStatus(e.agentId(),
                     cz.krokviak.agents.cli.render.AgentStatus.FAILED, e.error());
                 renderer.clearCurrentAgent();
             }
-            case CliEvent.AgentProgress e ->
+            case AgentEvent.AgentProgress e ->
                 renderer.renderAgentStatus(e.agentId(),
                     cz.krokviak.agents.cli.render.AgentStatus.RUNNING, e.detail());
-            case CliEvent.ResponseDelta e ->
+            case AgentEvent.ResponseDelta e ->
                 renderer.printTextDelta(e.text());
-            case CliEvent.ResponseDone _ -> renderer.println("");
-            case CliEvent.SpinnerStart e ->
+            case AgentEvent.ResponseDone _ -> renderer.println("");
+            case AgentEvent.SpinnerStart e ->
                 renderer.startSpinner(e.message());
-            case CliEvent.SpinnerStop _ ->
+            case AgentEvent.SpinnerStop _ ->
                 renderer.stopSpinner();
-            case CliEvent.ErrorOccurred e ->
+            case AgentEvent.ErrorOccurred e ->
                 renderer.printError(e.message());
-            case CliEvent.TaskNotification e -> {
+            case AgentEvent.TaskNotification e -> {
                 String icon = switch (e.status()) {
                     case "COMPLETED" -> "\u2713";
                     case "FAILED" -> "\u2717";
@@ -67,21 +69,25 @@ public final class RenderEventListener {
                     renderer.println("    " + summary);
                 }
             }
-            case CliEvent.MailboxMessage e ->
+            case AgentEvent.MailboxMessage e ->
                 renderer.println("  [" + e.sender() + "] " + e.content());
-            case CliEvent.BudgetExceeded _ -> {} // handled by AgentRunner prompt
-            case CliEvent.CompactionTriggered e ->
+            case AgentEvent.BudgetExceeded _ -> {} // handled by AgentRunner prompt
+            case AgentEvent.CompactionTriggered e ->
                 renderer.println("  [Compacted: " + e.messagesBefore() + " → " + e.messagesAfter() + " messages]");
-            case CliEvent.SessionLoaded e ->
+            case AgentEvent.SessionLoaded e ->
                 renderer.println("  Loaded " + e.messageCount() + " messages from session: " + e.sessionId());
-            case CliEvent.ImageAttached e ->
+            case AgentEvent.ImageAttached e ->
                 renderer.println("  \ud83d\uddbc [Image #" + e.index() + "] " + e.path());
             // User events — consumed by business logic listeners, not renderer
-            case CliEvent.UserPromptSubmitted _ -> {}
-            case CliEvent.UserSelectionMade _ -> {}
-            case CliEvent.UserTextInputSubmitted _ -> {}
-            case CliEvent.CommandExecuted _ -> {}
-            case CliEvent.PermissionDecision _ -> {}
+            case AgentEvent.UserPromptSubmitted _ -> {}
+            case AgentEvent.UserSelectionMade _ -> {}
+            case AgentEvent.UserTextInputSubmitted _ -> {}
+            case AgentEvent.CommandExecuted _ -> {}
+            case AgentEvent.PermissionResolved _ -> {}
+            case AgentEvent.PermissionRequested _ -> {}
+            case AgentEvent.QuestionRequested _ -> {}
+            case AgentEvent.TextInputRequested _ -> {}
+            default -> {}
         }
     }
 }

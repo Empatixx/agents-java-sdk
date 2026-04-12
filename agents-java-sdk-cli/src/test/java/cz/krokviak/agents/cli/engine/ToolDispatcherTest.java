@@ -1,7 +1,8 @@
 package cz.krokviak.agents.cli.engine;
 
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.event.CliEvent;
 import cz.krokviak.agents.cli.event.CliEventBus;
 import cz.krokviak.agents.cli.hook.Hooks;
 import cz.krokviak.agents.cli.test.FakeRenderer;
@@ -22,7 +23,7 @@ class ToolDispatcherTest {
 
     CliContext ctx;
     Hooks hooks;
-    List<CliEvent> events;
+    List<AgentEvent> events;
 
     @BeforeEach
     void setup() {
@@ -72,8 +73,8 @@ class ToolDispatcherTest {
 
         dispatcher.executeAll(toolCalls, newItems);
 
-        assertTrue(events.stream().anyMatch(e -> e instanceof CliEvent.ToolStarted ts && ts.name().equals("echo")));
-        assertTrue(events.stream().anyMatch(e -> e instanceof CliEvent.ToolCompleted tc && tc.name().equals("echo")));
+        assertTrue(events.stream().anyMatch(e -> e instanceof AgentEvent.ToolStarted ts && ts.name().equals("echo")));
+        assertTrue(events.stream().anyMatch(e -> e instanceof AgentEvent.ToolCompleted tc && tc.name().equals("echo")));
         assertEquals(2, newItems.size()); // ToolCallItem + ToolOutputItem
     }
 

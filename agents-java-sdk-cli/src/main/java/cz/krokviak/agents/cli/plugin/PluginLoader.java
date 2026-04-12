@@ -1,12 +1,14 @@
 package cz.krokviak.agents.cli.plugin;
 
+import cz.krokviak.agents.api.hook.HookPhase;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.krokviak.agents.cli.CliContext;
 import cz.krokviak.agents.cli.command.Command;
 import cz.krokviak.agents.cli.hook.Hook;
-import cz.krokviak.agents.cli.hook.HookResult;
+import cz.krokviak.agents.api.hook.HookResult;
 import cz.krokviak.agents.cli.hook.ToolUseEvent;
 import cz.krokviak.agents.cli.skill.Skill;
 import cz.krokviak.agents.cli.skill.SkillLoader;
@@ -217,9 +219,9 @@ public final class PluginLoader {
 
         for (var entry : hooksMap.entrySet()) {
             String eventName = entry.getKey();
-            Hook.Phase phase = switch (eventName) {
-                case "PreToolUse" -> Hook.Phase.PRE_TOOL;
-                case "PostToolUse" -> Hook.Phase.POST_TOOL;
+            HookPhase phase = switch (eventName) {
+                case "PreToolUse" -> HookPhase.PRE_TOOL;
+                case "PostToolUse" -> HookPhase.POST_TOOL;
                 default -> null;
             };
             if (phase == null) continue;
@@ -284,10 +286,10 @@ public final class PluginLoader {
     /**
      * A shell command hook loaded from plugin's hooks.json.
      */
-    private record CommandHook(Hook.Phase phase, String matcher, String command,
+    private record CommandHook(HookPhase phase, String matcher, String command,
                                Path pluginDir, int timeoutSeconds) implements Hook {
         @Override
-        public Hook.Phase phase() { return phase; }
+        public HookPhase phase() { return phase; }
 
         @Override
         public HookResult execute(ToolUseEvent event) {

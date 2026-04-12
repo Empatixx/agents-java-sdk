@@ -135,6 +135,9 @@ public class CLI {
         // Wire event bus → renderer
         new cz.krokviak.agents.cli.event.RenderEventListener(output).register(ctx.eventBus());
 
+        // Install UI-agnostic agent facade (Phase 1: delegates to existing managers via CliContext)
+        ctx.setAgent(new cz.krokviak.agents.cli.service.AgentServiceImpl(ctx));
+
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {
             ctx.setPromptRenderer(tr);

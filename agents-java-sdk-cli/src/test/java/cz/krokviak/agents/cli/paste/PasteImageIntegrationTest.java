@@ -1,7 +1,8 @@
 package cz.krokviak.agents.cli.paste;
 
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.event.CliEvent;
 import cz.krokviak.agents.cli.event.CliEventBus;
 import cz.krokviak.agents.cli.test.FakeRenderer;
 import cz.krokviak.agents.runner.InputItem;
@@ -31,7 +32,7 @@ class PasteImageIntegrationTest {
     CliContext ctx;
     PasteHandler pasteHandler;
     ImageHandler imageHandler;
-    List<CliEvent> events;
+    List<AgentEvent> events;
     int imageCounter;
 
     @BeforeEach
@@ -54,7 +55,7 @@ class PasteImageIntegrationTest {
                 var img = imageHandler.processImagePath(input);
                 ctx.history().add(img);
                 imageCounter++;
-                ctx.eventBus().emit(new CliEvent.ImageAttached(img.filePath(), imageCounter));
+                ctx.eventBus().emit(new AgentEvent.ImageAttached(img.filePath(), imageCounter));
                 return "[Image #" + imageCounter + "] attached. " + img.description();
             } catch (Exception e) {
                 fail("Image processing failed: " + e.getMessage());
@@ -101,8 +102,8 @@ class PasteImageIntegrationTest {
 
         // Event should have fired
         var imageEvents = events.stream()
-            .filter(e -> e instanceof CliEvent.ImageAttached)
-            .map(e -> (CliEvent.ImageAttached) e)
+            .filter(e -> e instanceof AgentEvent.ImageAttached)
+            .map(e -> (AgentEvent.ImageAttached) e)
             .toList();
         assertEquals(1, imageEvents.size());
         assertEquals(1, imageEvents.getFirst().index());

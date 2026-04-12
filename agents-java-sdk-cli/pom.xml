@@ -40,6 +40,10 @@
         </dependency>
         <dependency>
             <groupId>cz.krokviak</groupId>
+            <artifactId>agents-java-sdk-agent-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cz.krokviak</groupId>
             <artifactId>agents-java-sdk-anthropic</artifactId>
             <version>${project.version}</version>
         </dependency>

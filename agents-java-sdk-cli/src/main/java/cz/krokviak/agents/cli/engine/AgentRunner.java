@@ -1,5 +1,7 @@
 package cz.krokviak.agents.cli.engine;
 
+import cz.krokviak.agents.api.event.AgentEvent;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import cz.krokviak.agents.cli.CliContext;
@@ -61,15 +63,15 @@ public class AgentRunner {
                 StreamingToolExecutor streamingExecutor = new StreamingToolExecutor(toolDispatcher, ctx);
                 StreamCollector collector = new StreamCollector();
                 var bus = ctx.eventBus();
-                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStart("Thinking..."));
+                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStart("Thinking..."));
                 boolean firstEvent = true;
 
                 try (ModelResponseStream stream = ctx.model().callStreamed(llmCtx, ctx.modelSettings())) {
                     for (ModelResponseStream.Event event : stream) {
-                        if (firstEvent) { bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStop()); firstEvent = false; }
+                        if (firstEvent) { bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop()); firstEvent = false; }
                         switch (event) {
                             case ModelResponseStream.Event.TextDelta td -> {
-                                bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ResponseDelta(td.delta()));
+                                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ResponseDelta(td.delta()));
                                 collector.onTextDelta(td.delta());
                             }
                             case ModelResponseStream.Event.ToolCallDelta tcd -> {
@@ -87,15 +89,15 @@ public class AgentRunner {
                         }
                     }
                 } catch (ContextTooLongException e) {
-                    if (firstEvent) bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStop());
+                    if (firstEvent) bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop());
                     streamingExecutor.shutdown();
                     if (retried) {
-                        bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(
+                        bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ErrorOccurred(
                             "Context still too large after compaction. Try /compact manually."));
                         break;
                     }
                     retried = true;
-                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.CompactionTriggered(
+                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.CompactionTriggered(
                         ctx.history().size(), -1));
                     var reactiveCompacted = ctx.compactionPipeline().reactiveCompact(ctx.history(), ctx.systemPrompt());
                     ctx.history().clear();
@@ -104,9 +106,9 @@ public class AgentRunner {
                     continue;
                 }
                 retried = false;
-                if (firstEvent) bus.emit(new cz.krokviak.agents.cli.event.CliEvent.SpinnerStop());
+                if (firstEvent) bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop());
                 if (collector.text() != null) {
-                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ResponseDone(0, 0));
+                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ResponseDone(0, 0));
                 }
 
                 // Track cost + token budget
@@ -140,20 +142,20 @@ public class AgentRunner {
                     if (!promptExtendBudget()) break;
                 }
                 if (tokenBudget.isDiminishingReturns()) {
-                    bus.emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(
+                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ErrorOccurred(
                         "Diminishing returns detected — stopping"));
                     break;
                 }
             }
 
             if (!tokenBudget.isOverBudget() && !tokenBudget.isDiminishingReturns()) {
-                ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(
+                ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ErrorOccurred(
                     "Reached maximum turns (" + maxTurns + ")"));
             }
         } catch (Exception e) {
             String msg = e.getMessage();
             if (msg == null) msg = e.getClass().getSimpleName();
-            ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.ErrorOccurred(msg));
+            ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ErrorOccurred(msg));
             e.printStackTrace(System.err);
         }
 
@@ -169,7 +171,7 @@ public class AgentRunner {
             String msg = String.format("<task-notification>\n  task-id: %s\n  status: %s\n  description: %s\n  summary: %s\n</task-notification>",
                 n.taskId(), n.status(), n.description(), n.summary());
             ctx.history().add(new InputItem.SystemMessage(msg));
-            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.TaskNotification(
+            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.TaskNotification(
                 n.taskId(), n.description(), n.status().name(), n.summary()));
         }
     }
@@ -183,7 +185,7 @@ public class AgentRunner {
             String msg = String.format("<mailbox-message>\n  from: %s\n  to: %s\n  content: %s\n</mailbox-message>",
                 message.sender(), message.recipient(), message.content());
             ctx.history().add(new InputItem.SystemMessage(msg));
-            bus.emit(new cz.krokviak.agents.cli.event.CliEvent.MailboxMessage(
+            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.MailboxMessage(
                 message.sender(), message.content()));
         }
     }
@@ -204,7 +206,7 @@ public class AgentRunner {
         String header = String.format("Token budget exceeded %s. Increase to %,d?", tokenBudget.format(), newBudget);
         String[] options = {"Yes, increase 2x", "No, stop"};
 
-        ctx.eventBus().emit(new cz.krokviak.agents.cli.event.CliEvent.BudgetExceeded(
+        ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.BudgetExceeded(
             tokenBudget.totalUsed(), tokenBudget.maxBudget()));
 
         var renderer = ctx.promptRenderer();
