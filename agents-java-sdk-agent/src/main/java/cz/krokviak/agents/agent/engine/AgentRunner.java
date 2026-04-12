@@ -39,6 +39,8 @@ public class AgentRunner {
         try {
             boolean retried = false;
             for (int turn = 0; turn < maxTurns; turn++) {
+                ctx.abortSignal().throwIfAborted();
+
                 // Inject pending task notifications
                 injectTaskNotifications();
                 injectMailboxMessages();

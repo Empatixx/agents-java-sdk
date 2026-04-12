@@ -83,6 +83,7 @@ public class StreamingToolExecutor {
         List<ToolResult> results = new ArrayList<>();
 
         for (int i = 0; i < allToolCalls.size(); i++) {
+            ctx.abortSignal().throwIfAborted();
             InputItem.ToolCall tc = allToolCalls.get(i);
             ToolResult result;
             CompletableFuture<ToolResult> pending = pendingResults.get(tc.id());

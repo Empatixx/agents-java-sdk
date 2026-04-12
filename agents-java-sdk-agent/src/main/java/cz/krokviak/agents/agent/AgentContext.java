@@ -56,6 +56,7 @@ public class AgentContext {
     private AdvancedSQLiteSession advancedSession;
     private volatile AgentService agent;
     private volatile String systemPromptSuffix;
+    private final cz.krokviak.agents.runner.AbortSignal abortSignal = new cz.krokviak.agents.runner.AbortSignal();
 
     private final java.util.concurrent.ConcurrentHashMap<String, String> properties = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -148,6 +149,14 @@ public class AgentContext {
      */
     public void setSystemPromptSuffix(String suffix) { this.systemPromptSuffix = suffix; }
     public String systemPromptSuffix() { return systemPromptSuffix; }
+
+    /**
+     * Cooperative abort signal for the current run. Engine checkpoints call
+     * {@link cz.krokviak.agents.runner.AbortSignal#throwIfAborted()};
+     * {@link AgentService#cancelTurn()} flips it. Reset at the start of each
+     * new {@code runTurn(...)}.
+     */
+    public cz.krokviak.agents.runner.AbortSignal abortSignal() { return abortSignal; }
 
     /** System prompt with active suffix appended. Engine calls this at turn time. */
     public String effectiveSystemPrompt() {

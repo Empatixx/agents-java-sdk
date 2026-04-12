@@ -35,6 +35,7 @@ public class ToolDispatcher {
      * Returns the result text. Does NOT add to history or print — caller handles that.
      */
     public String executeTool(String toolName, Map<String, Object> arguments, String toolCallId) {
+        ctx.abortSignal().throwIfAborted();
         // PRE_TOOL hook
         HookResult hookResult = hooks.dispatch(HookPhase.PRE_TOOL,
             ToolUseEvent.preTool(toolName, arguments, ctx.agent(), toolCallId));

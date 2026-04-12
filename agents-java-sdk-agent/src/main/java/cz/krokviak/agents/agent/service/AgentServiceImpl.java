@@ -66,17 +66,23 @@ public final class AgentServiceImpl implements AgentService {
             return CompletableFuture.failedFuture(new IllegalStateException("AgentRunner not installed"));
         }
         return CompletableFuture.supplyAsync(() -> {
+            ctx.abortSignal().reset();
             int before = ctx.history().size();
-            runner.run(req.userText());
+            boolean interrupted = false;
+            try {
+                runner.run(req.userText());
+            } catch (cz.krokviak.agents.runner.AbortException e) {
+                interrupted = true;
+            }
             return new RunTurnResult(
                 /*finalOutput*/ null,
                 /*turns*/ Math.max(0, ctx.history().size() - before),
                 ctx.costTracker().totalInputTokens(),
                 ctx.costTracker().totalOutputTokens(),
-                /*interrupted*/ false);
+                interrupted);
         });
     }
-    @Override public void cancelTurn() { /* cooperative cancellation hook — wire in Phase 3 */ }
+    @Override public void cancelTurn() { ctx.abortSignal().abort(); }
 
     // -- Blocking-prompt async flow --
     @Override

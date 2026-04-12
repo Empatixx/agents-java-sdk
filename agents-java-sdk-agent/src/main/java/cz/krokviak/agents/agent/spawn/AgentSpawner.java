@@ -157,6 +157,7 @@ public class AgentSpawner {
         StringBuilder response = new StringBuilder();
 
         for (int turn = 0; turn < maxTurns; turn++) {
+            ctx.abortSignal().throwIfAborted();
             injectMailbox(history, agentId);
             if (progress != null) progress.updateActivity("turn " + (turn + 1));
 
