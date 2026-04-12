@@ -1,7 +1,6 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.task.TaskManager;
-import cz.krokviak.agents.cli.task.TaskState;
+import cz.krokviak.agents.api.AgentService;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 
@@ -9,11 +8,11 @@ import java.util.List;
 import java.util.Map;
 
 public class TaskCreateTool implements ExecutableTool {
-    private final TaskManager taskManager;
+    private final AgentService agent;
     private final ToolDefinition toolDefinition;
 
-    public TaskCreateTool(TaskManager taskManager) {
-        this.taskManager = taskManager;
+    public TaskCreateTool(AgentService agent) {
+        this.agent = agent;
         this.toolDefinition = new ToolDefinition("task_create",
             "Create a task to track work. Returns the task ID.",
             Map.of("type", "object", "properties", Map.of(
@@ -31,17 +30,11 @@ public class TaskCreateTool implements ExecutableTool {
         String desc = args.get("description", String.class);
         String status = args.getOrDefault("status", String.class, "pending");
         if (desc == null || desc.isBlank()) return ToolOutput.text("Error: description required");
-        String id = taskManager.nextId();
-        TaskState.Status initialStatus = switch (status.toLowerCase()) {
-            case "running", "in_progress" -> TaskState.Status.RUNNING;
-            case "pending" -> TaskState.Status.PENDING;
-            default -> null;
-        };
-        if (initialStatus == null) {
-            return ToolOutput.text("Error: unsupported status: " + status + ". Use pending or running.");
+        try {
+            String id = agent.createTask(desc, status);
+            return ToolOutput.text("Task created: " + id + " — " + desc + " [" + status + "]");
+        } catch (IllegalArgumentException e) {
+            return ToolOutput.text("Error: " + e.getMessage());
         }
-        TaskState task = new TaskState(id, desc, initialStatus);
-        taskManager.register(task);
-        return ToolOutput.text("Task created: " + id + " — " + desc + " [" + initialStatus + "]");
     }
 }

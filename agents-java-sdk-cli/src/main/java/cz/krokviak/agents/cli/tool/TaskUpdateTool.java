@@ -1,7 +1,6 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.task.TaskManager;
-import cz.krokviak.agents.cli.task.TaskState;
+import cz.krokviak.agents.api.AgentService;
 import cz.krokviak.agents.context.ToolContext;
 import cz.krokviak.agents.tool.*;
 
@@ -9,11 +8,11 @@ import java.util.List;
 import java.util.Map;
 
 public class TaskUpdateTool implements ExecutableTool {
-    private final TaskManager taskManager;
+    private final AgentService agent;
     private final ToolDefinition toolDefinition;
 
-    public TaskUpdateTool(TaskManager taskManager) {
-        this.taskManager = taskManager;
+    public TaskUpdateTool(AgentService agent) {
+        this.agent = agent;
         this.toolDefinition = new ToolDefinition("task_update",
             "Update a task's status or summary.",
             Map.of("type", "object", "properties", Map.of(
@@ -34,26 +33,11 @@ public class TaskUpdateTool implements ExecutableTool {
         String summary = args.get("summary", String.class);
         if (taskId == null) return ToolOutput.text("Error: task_id required");
         if (status == null) return ToolOutput.text("Error: status required");
-
-        TaskState task = taskManager.get(taskId);
-        if (task == null) return ToolOutput.text("Error: task not found: " + taskId);
-
-        switch (status.toLowerCase()) {
-            case "pending" -> {
-                task.setPending();
-                if (summary != null && !summary.isBlank()) task.setResult(summary);
-            }
-            case "running", "in_progress" -> {
-                task.start();
-                if (summary != null && !summary.isBlank()) task.setResult(summary);
-            }
-            case "completed" -> task.complete(summary != null && !summary.isBlank() ? summary : "Completed");
-            case "failed" -> task.fail(summary != null && !summary.isBlank() ? summary : "Marked as failed");
-            case "killed", "stopped" -> task.kill();
-            default -> {
-                return ToolOutput.text("Error: unsupported status: " + status);
-            }
+        try {
+            agent.updateTask(taskId, status, summary);
+            return ToolOutput.text("Task " + taskId + " updated to " + status);
+        } catch (IllegalArgumentException e) {
+            return ToolOutput.text("Error: " + e.getMessage());
         }
-        return ToolOutput.text("Task " + taskId + " updated to " + status);
     }
 }

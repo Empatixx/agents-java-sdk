@@ -156,10 +156,42 @@ public final class AgentServiceImpl implements AgentService {
     }
     @Override public List<TaskInfo> listTasks() {
         return ctx.taskManager().all().stream()
-            .map(t -> new TaskInfo(t.id(), t.description(), String.valueOf(t.status()), null, 0L, 0L))
+            .map(this::toInfo)
             .toList();
     }
+    @Override public TaskInfo getTask(String taskId) {
+        var t = ctx.taskManager().get(taskId);
+        return t == null ? null : toInfo(t);
+    }
+    @Override public String createTask(String description, String initialStatus) {
+        var tm = ctx.taskManager();
+        String id = tm.nextId();
+        cz.krokviak.agents.cli.task.TaskState.Status status = switch (
+            initialStatus == null ? "pending" : initialStatus.toLowerCase()) {
+            case "running", "in_progress" -> cz.krokviak.agents.cli.task.TaskState.Status.RUNNING;
+            default -> cz.krokviak.agents.cli.task.TaskState.Status.PENDING;
+        };
+        tm.register(new cz.krokviak.agents.cli.task.TaskState(id, description, status));
+        return id;
+    }
+    @Override public void updateTask(String taskId, String newStatus, String summary) {
+        var task = ctx.taskManager().get(taskId);
+        if (task == null) throw new IllegalArgumentException("No such task: " + taskId);
+        switch (newStatus.toLowerCase()) {
+            case "pending" -> { task.setPending(); if (summary != null) task.setResult(summary); }
+            case "running", "in_progress" -> { task.start(); if (summary != null) task.setResult(summary); }
+            case "completed" -> task.complete(summary != null ? summary : "Completed");
+            case "failed" -> task.fail(summary != null ? summary : "Failed");
+            case "killed", "stopped" -> task.kill();
+            default -> throw new IllegalArgumentException("Unsupported status: " + newStatus);
+        }
+    }
     @Override public void stopTask(String taskId) { ctx.taskManager().killTask(taskId); }
+
+    private TaskInfo toInfo(cz.krokviak.agents.cli.task.TaskState t) {
+        return new TaskInfo(t.id(), t.description(), String.valueOf(t.status()),
+            t.result() != null ? t.result() : t.error(), 0L, 0L);
+    }
     @Override public List<AgentInfo> listRunningAgents() { return List.of(); /* wired in Phase 2 via AgentRegistry */ }
     @Override public List<TeamInfo> listTeams() { return List.of(); /* wired in Phase 2 via TeamManager */ }
     @Override public void sendMailbox(String from, String to, String message) {

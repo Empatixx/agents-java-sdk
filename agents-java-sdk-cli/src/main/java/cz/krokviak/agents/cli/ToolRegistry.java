@@ -65,10 +65,10 @@ public final class ToolRegistry {
         toolList.add(new SendMessageTool(ctx.agent()));
 
         // Task management
-        toolList.add(new TaskCreateTool(taskManager));
+        toolList.add(new TaskCreateTool(ctx.agent()));
         toolList.add(new TaskGetTool(taskManager));
         toolList.add(new TaskListTool(taskManager));
-        toolList.add(new TaskUpdateTool(taskManager));
+        toolList.add(new TaskUpdateTool(ctx.agent()));
         toolList.add(new TaskStopTool(taskManager));
         toolList.add(new TaskOutputTool(taskManager));
 

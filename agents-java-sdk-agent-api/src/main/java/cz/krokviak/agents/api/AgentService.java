@@ -70,6 +70,9 @@ public interface AgentService {
     // -- Sub-agents / tasks / teams / mailbox --
     CompletableFuture<String> spawnAgent(SpawnRequest req);
     List<TaskInfo> listTasks();
+    TaskInfo getTask(String taskId);
+    String createTask(String description, String initialStatus);
+    void updateTask(String taskId, String newStatus, String summary);
     void stopTask(String taskId);
     List<AgentInfo> listRunningAgents();
     List<TeamInfo> listTeams();
