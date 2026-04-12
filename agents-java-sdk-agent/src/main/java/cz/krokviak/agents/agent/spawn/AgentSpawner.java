@@ -177,21 +177,7 @@ public class AgentSpawner {
             var llmCtx = new LlmContext(systemPrompt, List.copyOf(history), defs, null, settings);
 
             try (cz.krokviak.agents.model.ModelResponseStream stream = model.callStreamed(llmCtx, settings)) {
-                for (var event : stream) {
-                    ctx.abortSignal().throwIfAborted();
-                    switch (event) {
-                        case cz.krokviak.agents.model.ModelResponseStream.Event.TextDelta td -> {
-                            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ResponseDelta(td.delta()));
-                            collector.onTextDelta(td.delta());
-                        }
-                        case cz.krokviak.agents.model.ModelResponseStream.Event.ThinkingDelta thd ->
-                            bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDelta(thd.delta()));
-                        case cz.krokviak.agents.model.ModelResponseStream.Event.ToolCallDelta tcd ->
-                            collector.onToolCallDelta(tcd.toolCallId(), tcd.name(), tcd.argumentsDelta());
-                        case cz.krokviak.agents.model.ModelResponseStream.Event.Done done ->
-                            collector.onDone(done.fullResponse());
-                    }
-                }
+                cz.krokviak.agents.agent.engine.TurnStreamPump.pump(stream, bus, collector);
             }
 
             ModelResponse resp = collector.response();

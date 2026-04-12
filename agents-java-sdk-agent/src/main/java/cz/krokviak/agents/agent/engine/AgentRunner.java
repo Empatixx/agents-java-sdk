@@ -75,50 +75,29 @@ public class AgentRunner {
                 LlmContext llmCtx = new LlmContext(systemPrompt, List.copyOf(ctx.history()),
                     toolDispatcher.definitions(), null, ctx.modelSettings());
 
-                // Streaming with eager tool execution
+                // Streaming with eager tool execution — shared pump handles text/thinking/done event emission
                 StreamingToolExecutor streamingExecutor = new StreamingToolExecutor(toolDispatcher, ctx);
                 StreamCollector collector = new StreamCollector();
                 var bus = ctx.eventBus();
                 bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStart("Thinking..."));
-                boolean firstEvent = true;
+                final boolean[] spinnerStopped = {false};
+                Runnable stopSpinner = () -> {
+                    if (!spinnerStopped[0]) {
+                        bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop());
+                        spinnerStopped[0] = true;
+                    }
+                };
 
-                boolean thinkingActive = false;
                 try (ModelResponseStream stream = ctx.model().callStreamed(llmCtx, ctx.modelSettings())) {
-                    for (ModelResponseStream.Event event : stream) {
-                        if (firstEvent) { bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop()); firstEvent = false; }
-                        switch (event) {
-                            case ModelResponseStream.Event.TextDelta td -> {
-                                if (thinkingActive) {
-                                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDone());
-                                    thinkingActive = false;
-                                }
-                                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ResponseDelta(td.delta()));
-                                collector.onTextDelta(td.delta());
-                            }
-                            case ModelResponseStream.Event.ThinkingDelta thd -> {
-                                thinkingActive = true;
-                                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDelta(thd.delta()));
-                            }
-                            case ModelResponseStream.Event.ToolCallDelta tcd -> {
-                                collector.onToolCallDelta(tcd.toolCallId(), tcd.name(), tcd.argumentsDelta());
-                                // Feed to streaming executor for eager execution
-                                streamingExecutor.onToolCallDelta(tcd.toolCallId(), tcd.name(), tcd.argumentsDelta());
-                            }
-                            case ModelResponseStream.Event.Done done -> {
-                                if (thinkingActive) {
-                                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDone());
-                                    thinkingActive = false;
-                                }
-                                collector.onDone(done.fullResponse());
-                                // Mark all tool calls as complete for streaming executor
-                                for (var tc : collector.toolCalls()) {
-                                    streamingExecutor.onToolCallComplete(tc.id());
-                                }
-                            }
-                        }
+                    TurnStreamPump.pump(stream, bus, collector,
+                        (id, name, delta) -> streamingExecutor.onToolCallDelta(id, name, delta),
+                        stopSpinner);
+                    // Mark all tool calls as complete for the streaming executor.
+                    for (var tc : collector.toolCalls()) {
+                        streamingExecutor.onToolCallComplete(tc.id());
                     }
                 } catch (ContextTooLongException e) {
-                    if (firstEvent) bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop());
+                    stopSpinner.run();
                     streamingExecutor.shutdown();
                     if (retried) {
                         bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ErrorOccurred(
@@ -139,7 +118,7 @@ public class AgentRunner {
                     continue;
                 }
                 retried = false;
-                if (firstEvent) bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop());
+                stopSpinner.run();
                 if (collector.text() != null) {
                     bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ResponseDone(0, 0));
                 }
