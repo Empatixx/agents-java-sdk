@@ -113,8 +113,9 @@ public class Repl {
     }
 
     private void printPrompt() {
-        if (ctx.costTracker().totalInputTokens() > 0) {
-            ctx.output().printPromptWithCost(ctx.costTracker().format());
+        var costs = ctx.agent().costs();
+        if (costs.inputTokens() > 0) {
+            ctx.output().printPromptWithCost(costs.formatted());
         } else {
             ctx.output().printPrompt();
         }
@@ -219,12 +220,16 @@ public class Repl {
     }
 
     private void loadSessionHistory() {
-        if (ctx.session() != null && ctx.sessionId() != null) {
-            var loaded = ctx.session().getHistory(ctx.sessionId());
-            if (!loaded.isEmpty()) {
-                ctx.history().addAll(loaded);
-                ctx.output().println("\033[2mLoaded " + loaded.size() + " messages from session: " + ctx.sessionId() + "\033[0m");
+        String sid = ctx.agent().currentSessionId();
+        if (ctx.session() == null || sid == null) return;
+        try {
+            ctx.agent().loadSession(sid).join();
+            int n = ctx.agent().history().size();
+            if (n > 0) {
+                ctx.output().println("\033[2mLoaded " + n + " messages from session: " + sid + "\033[0m");
             }
+        } catch (Exception ignored) {
+            // session may not exist yet
         }
     }
 }
