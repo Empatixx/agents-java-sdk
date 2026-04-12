@@ -1,35 +1,26 @@
 package cz.krokviak.agents.cli.tool;
 
-import cz.krokviak.agents.cli.CliContext;
-import cz.krokviak.agents.cli.agent.AgentRegistry;
-import cz.krokviak.agents.cli.agent.AgentSpawner;
-import cz.krokviak.agents.cli.agent.ProgressTracker;
-import cz.krokviak.agents.cli.agent.RunningAgent;
-import cz.krokviak.agents.cli.task.TaskManager;
+import cz.krokviak.agents.api.AgentService;
+import cz.krokviak.agents.api.dto.SpawnRequest;
 import cz.krokviak.agents.context.ToolContext;
-import cz.krokviak.agents.model.*;
 import cz.krokviak.agents.tool.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Launch a sub-agent via {@link AgentService#spawnAgent(SpawnRequest)}.
+ * All direct access to {@code AgentSpawner} / {@code Model} has moved
+ * behind the facade — this tool no longer knows how sub-agents run.
+ */
 public class AgentTool implements ExecutableTool {
-    private final CliContext ctx;
-    private final List<ExecutableTool> tools;
-    private final TaskManager taskManager;
-    private final AgentRegistry agentRegistry;
-    private final AgentSpawner spawner;
+    private final AgentService agent;
     private final ToolDefinition toolDefinition;
     private final AtomicInteger nameCounter = new AtomicInteger(0);
 
-    public AgentTool(CliContext ctx, List<ExecutableTool> tools, TaskManager taskManager,
-                     AgentRegistry agentRegistry) {
-        this.ctx = ctx;
-        this.tools = tools;
-        this.taskManager = taskManager;
-        this.agentRegistry = agentRegistry;
-        this.spawner = new AgentSpawner(ctx, agentRegistry, taskManager);
+    public AgentTool(AgentService agent) {
+        this.agent = agent;
         this.toolDefinition = new ToolDefinition("agent",
             "Launch a sub-agent to handle a task. By default runs in FOREGROUND (blocking) — " +
                 "the agent executes and its result is returned directly to you. " +
@@ -51,34 +42,28 @@ public class AgentTool implements ExecutableTool {
     @Override public ToolDefinition definition() { return toolDefinition; }
 
     @Override
-    public ToolOutput execute(ToolArgs args, ToolContext<?> ctx2) throws Exception {
+    public ToolOutput execute(ToolArgs args, ToolContext<?> ctx) throws Exception {
         String prompt = args.get("prompt", String.class);
         String desc = args.getOrDefault("description", String.class, "sub-agent");
         Boolean bg = args.getOrDefault("run_in_background", Boolean.class, false);
         String nameParam = args.getOrDefault("name", String.class, null);
         String modelOverride = args.get("model", String.class);
         Integer maxTurnsParam = args.getOrDefault("max_turns", Integer.class, null);
-        int maxTurns = Math.min(maxTurnsParam != null ? maxTurnsParam : 15, 100);
         if (prompt == null || prompt.isBlank()) return ToolOutput.text("Error: prompt required");
 
-        // Resolve agent name
         String agentName = (nameParam != null && !nameParam.isBlank())
             ? nameParam
             : "agent-" + nameCounter.incrementAndGet();
 
-        Model model = ctx.model();
-        if (modelOverride != null && !modelOverride.isBlank()) {
-            model = new cz.krokviak.agents.model.AnthropicModel(ctx.apiKey(), ctx.baseUrl(), modelOverride);
-        }
+        boolean background = Boolean.TRUE.equals(bg);
+        var req = new SpawnRequest(agentName, prompt, desc, background,
+            modelOverride, maxTurnsParam, List.of(), /*isolatedWorktree*/ false);
 
-        ProgressTracker progress = new ProgressTracker();
-
-        if (Boolean.TRUE.equals(bg)) {
-            RunningAgent agent = spawner.spawnBackground(agentName, prompt, tools, model, progress, maxTurns);
-            return ToolOutput.text("Background agent started: " + agentName + " (" + desc + ")\nUse /tasks to check status.");
-        } else {
-            String output = spawner.spawnForeground(agentName, prompt, tools, model, progress, maxTurns);
-            return ToolOutput.text(output);
+        if (background) {
+            String id = agent.spawnAgent(req).get();
+            return ToolOutput.text("Background agent started: " + id + " (" + desc + ")\nUse /tasks to check status.");
         }
+        String output = agent.spawnAgent(req).get();
+        return ToolOutput.text(output);
     }
 }

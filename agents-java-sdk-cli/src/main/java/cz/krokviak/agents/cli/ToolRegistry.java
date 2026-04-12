@@ -111,7 +111,7 @@ public final class ToolRegistry {
         ToolDispatcher dispatcher = new ToolDispatcher(toolList, hooks, ctx);
 
         // Tools that need the dispatcher or registry
-        toolList.add(new AgentTool(ctx, toolList, taskManager, agentRegistry));
+        toolList.add(new AgentTool(ctx.agent()));
         toolList.add(new ToolSearchTool(dispatcher));
         toolList.add(new TeamCreateTool(teamManager));
         toolList.add(new TeamDeleteTool(teamManager));

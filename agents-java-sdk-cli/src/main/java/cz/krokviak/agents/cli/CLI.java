@@ -139,6 +139,9 @@ public class CLI {
         var agentService = new cz.krokviak.agents.cli.service.AgentServiceImpl(ctx);
         ctx.setAgent(agentService);
         permissionManager.setAgentService(agentService);
+        agentService.setAgentRegistry(agentRegistry);
+        agentService.setTeamManager(teamManager);
+        agentService.setSpawner(new cz.krokviak.agents.cli.agent.AgentSpawner(ctx, agentRegistry, taskManager));
 
         // Store TuiRenderer on context for ExitPlanModeTool
         if (output instanceof cz.krokviak.agents.cli.render.tui.TuiRenderer tr) {

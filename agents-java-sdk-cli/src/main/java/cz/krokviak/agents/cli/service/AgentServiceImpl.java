@@ -33,6 +33,7 @@ public final class AgentServiceImpl implements AgentService {
     private final ConcurrentHashMap<String, CompletableFuture<String>> pendingTextInputs = new ConcurrentHashMap<>();
 
     private volatile cz.krokviak.agents.cli.engine.ToolDispatcher toolDispatcher;
+    private volatile cz.krokviak.agents.cli.agent.AgentSpawner spawner;
 
     public AgentServiceImpl(CliContext ctx) {
         this.ctx = ctx;
@@ -47,6 +48,11 @@ public final class AgentServiceImpl implements AgentService {
     /** Plug in the ToolDispatcher so {@link #availableTools()} can list registered tools. */
     public void setToolDispatcher(cz.krokviak.agents.cli.engine.ToolDispatcher toolDispatcher) {
         this.toolDispatcher = toolDispatcher;
+    }
+
+    /** Plug in the AgentSpawner so {@link #spawnAgent} is operational. */
+    public void setSpawner(cz.krokviak.agents.cli.agent.AgentSpawner spawner) {
+        this.spawner = spawner;
     }
 
     // -- Turn execution (delegated to AgentRunner in Phase 2; stubbed for now) --
@@ -158,7 +164,23 @@ public final class AgentServiceImpl implements AgentService {
 
     // -- Spawn / Tasks / Teams / Mailbox --
     @Override public CompletableFuture<String> spawnAgent(SpawnRequest req) {
-        return CompletableFuture.failedFuture(new UnsupportedOperationException("spawn wiring pending — see AgentTool / AgentSpawner"));
+        if (spawner == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("AgentSpawner not installed"));
+        }
+        var tools = toolDispatcher != null ? toolDispatcher.all() : List.<cz.krokviak.agents.tool.ExecutableTool>of();
+        var model = req.modelOverride() != null && !req.modelOverride().isBlank()
+            ? new cz.krokviak.agents.model.AnthropicModel(ctx.apiKey(), ctx.baseUrl(), req.modelOverride())
+            : ctx.model();
+        int maxTurns = req.maxTurns() != null ? Math.min(req.maxTurns(), 100) : 15;
+        var progress = new cz.krokviak.agents.cli.agent.ProgressTracker();
+        if (req.background()) {
+            return CompletableFuture.supplyAsync(() -> {
+                var ra = spawner.spawnBackground(req.agentName(), req.prompt(), tools, model, progress, maxTurns);
+                return ra.name();
+            });
+        }
+        return CompletableFuture.supplyAsync(() ->
+            spawner.spawnForeground(req.agentName(), req.prompt(), tools, model, progress, maxTurns));
     }
     @Override public List<TaskInfo> listTasks() {
         return ctx.taskManager().all().stream()
@@ -198,8 +220,23 @@ public final class AgentServiceImpl implements AgentService {
         return new TaskInfo(t.id(), t.description(), String.valueOf(t.status()),
             t.result() != null ? t.result() : t.error(), 0L, 0L);
     }
-    @Override public List<AgentInfo> listRunningAgents() { return List.of(); /* wired in Phase 2 via AgentRegistry */ }
-    @Override public List<TeamInfo> listTeams() { return List.of(); /* wired in Phase 2 via TeamManager */ }
+    private volatile cz.krokviak.agents.cli.agent.AgentRegistry agentRegistry;
+    private volatile cz.krokviak.agents.cli.agent.TeamManager teamManager;
+    public void setAgentRegistry(cz.krokviak.agents.cli.agent.AgentRegistry r) { this.agentRegistry = r; }
+    public void setTeamManager(cz.krokviak.agents.cli.agent.TeamManager m) { this.teamManager = m; }
+
+    @Override public List<AgentInfo> listRunningAgents() {
+        if (agentRegistry == null) return List.of();
+        return agentRegistry.list().stream()
+            .map(a -> new AgentInfo(a.name(), a.name(), String.valueOf(a.status()), a.description()))
+            .toList();
+    }
+    @Override public List<TeamInfo> listTeams() {
+        if (teamManager == null) return List.of();
+        return teamManager.listTeams().stream()
+            .map(t -> new TeamInfo(t.name(), List.of()))
+            .toList();
+    }
     @Override public void sendMailbox(String from, String to, String message) {
         ctx.mailboxManager().send(from, to, message);
     }
