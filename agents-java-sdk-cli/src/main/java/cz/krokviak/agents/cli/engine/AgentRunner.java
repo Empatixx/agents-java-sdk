@@ -204,13 +204,19 @@ public class AgentRunner {
     private boolean promptExtendBudget() {
         int newBudget = tokenBudget.maxBudget() * 2;
         String header = String.format("Token budget exceeded %s. Increase to %,d?", tokenBudget.format(), newBudget);
-        String[] options = {"Yes, increase 2x", "No, stop"};
 
         ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.BudgetExceeded(
             tokenBudget.totalUsed(), tokenBudget.maxBudget()));
 
-        var renderer = ctx.promptRenderer();
-        int selected = renderer != null ? renderer.promptSelection(header, options) : 1;
+        int selected;
+        try {
+            selected = ctx.agent().requestQuestion(header, java.util.List.of("Yes, increase 2x", "No, stop")).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (java.util.concurrent.ExecutionException e) {
+            return false;
+        }
 
         if (selected == 0) {
             tokenBudget.extend(2);

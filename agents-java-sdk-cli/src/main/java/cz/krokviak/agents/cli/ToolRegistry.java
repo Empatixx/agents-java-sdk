@@ -61,7 +61,7 @@ public final class ToolRegistry {
         // Planning & interaction
         toolList.add(new EnterPlanModeTool(ctx, planStore));
         toolList.add(new ExitPlanModeTool(ctx, planStore));
-        toolList.add(new AskUserQuestionTool(ctx));
+        toolList.add(new AskUserQuestionTool(ctx.agent()));
         toolList.add(new SendMessageTool(ctx.agent()));
 
         // Task management

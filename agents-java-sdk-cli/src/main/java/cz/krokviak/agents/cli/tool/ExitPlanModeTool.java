@@ -46,40 +46,36 @@ public class ExitPlanModeTool implements ExecutableTool {
         }
         ctx.output().println("╰" + "─".repeat(50));
 
-        // Use permission prompt UI for approval
-        var renderer = ctx.promptRenderer();
-        if (renderer != null) {
-            {
-                String[] options = {
-                    "Approve — implement the plan",
-                    "Reject — provide feedback to refine",
-                    "Cancel — discard plan"
-                };
-                int selected = renderer.promptSelection("\ud83d\udccb " + slug, options);
-
-                switch (selected) {
-                    case 0 -> {
-                        ctx.agent().setPlanMode(false);
-                        return ToolOutput.text("User APPROVED the plan. Implement it now.\n\nPlan:\n" + planContent);
-                    }
-                    case 1 -> {
-                        // Stay in plan mode, user will type feedback
-                        return ToolOutput.text("User REJECTED the plan. Stay in plan mode. " +
-                            "Wait for user feedback — they will tell you what to change. " +
-                            "Then update the plan and call exit_plan_mode again.");
-                    }
-                    default -> {
-                        ctx.agent().setPlanMode(false);
-                        return ToolOutput.text("Plan cancelled by user.");
-                    }
-                }
-            }
+        // Route approval through the UI-agnostic question flow.
+        int selected;
+        try {
+            selected = ctx.agent().requestQuestion("\ud83d\udccb " + slug, java.util.List.of(
+                "Approve — implement the plan",
+                "Reject — provide feedback to refine",
+                "Cancel — discard plan"
+            )).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            ctx.agent().setPlanMode(false);
+            return ToolOutput.text("Plan approval interrupted.");
+        } catch (java.util.concurrent.ExecutionException e) {
+            ctx.agent().setPlanMode(false);
+            return ToolOutput.text("Plan approval failed: " + e.getMessage());
         }
 
-        // Fallback: no TUI renderer
-        ctx.agent().setPlanMode(false);
-        ctx.output().println("Type 'ok' to approve or provide feedback.");
-        return ToolOutput.text("Plan shown. Wait for user response.");
+        return switch (selected) {
+            case 0 -> {
+                ctx.agent().setPlanMode(false);
+                yield ToolOutput.text("User APPROVED the plan. Implement it now.\n\nPlan:\n" + planContent);
+            }
+            case 1 -> ToolOutput.text("User REJECTED the plan. Stay in plan mode. " +
+                "Wait for user feedback — they will tell you what to change. " +
+                "Then update the plan and call exit_plan_mode again.");
+            default -> {
+                ctx.agent().setPlanMode(false);
+                yield ToolOutput.text("Plan cancelled by user.");
+            }
+        };
     }
 
 }
