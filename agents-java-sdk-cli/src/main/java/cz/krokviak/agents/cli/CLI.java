@@ -184,6 +184,7 @@ public class CLI {
         commands.register(new ModelCommand());
         commands.register(new ToolsCommand());
         commands.register(new OutputStyleCommand());
+        commands.register(new ThinkingCommand());
         commands.register(new PermissionsCommand());
         commands.register(new UndoCommand());
         commands.register(new SessionCommand());

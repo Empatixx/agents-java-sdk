@@ -7,7 +7,8 @@ public record ModelSettings(
     Double presencePenalty,
     Integer maxTokens,
     Boolean parallelToolCalls,
-    String truncation
+    String truncation,
+    ThinkingConfig thinking
 ) {
     public static Builder builder() { return new Builder(); }
 
@@ -19,6 +20,7 @@ public record ModelSettings(
         private Integer maxTokens;
         private Boolean parallelToolCalls;
         private String truncation;
+        private ThinkingConfig thinking;
 
         public Builder temperature(double v) { this.temperature = v; return this; }
         public Builder topP(double v) { this.topP = v; return this; }
@@ -27,9 +29,10 @@ public record ModelSettings(
         public Builder maxTokens(int v) { this.maxTokens = v; return this; }
         public Builder parallelToolCalls(boolean v) { this.parallelToolCalls = v; return this; }
         public Builder truncation(String v) { this.truncation = v; return this; }
+        public Builder thinking(ThinkingConfig v) { this.thinking = v; return this; }
         public ModelSettings build() {
             return new ModelSettings(temperature, topP, frequencyPenalty, presencePenalty,
-                maxTokens, parallelToolCalls, truncation);
+                maxTokens, parallelToolCalls, truncation, thinking);
         }
     }
 }

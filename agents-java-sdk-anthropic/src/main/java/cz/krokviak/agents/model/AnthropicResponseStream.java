@@ -84,6 +84,9 @@ final class AnthropicResponseStream implements ModelResponseStream {
                                 if ("text_delta".equals(cbd.delta().type()) && cbd.delta().text() != null) {
                                     accumulatedText.append(cbd.delta().text());
                                     pending.add(new Event.TextDelta(cbd.delta().text()));
+                                } else if ("thinking_delta".equals(cbd.delta().type())
+                                        && cbd.delta().thinking() != null) {
+                                    pending.add(new Event.ThinkingDelta(cbd.delta().thinking()));
                                 } else if ("input_json_delta".equals(cbd.delta().type()) && cbd.delta().partialJson() != null) {
                                     int idx = cbd.index();
                                     StringBuilder sb = toolCallArgs.get(idx);

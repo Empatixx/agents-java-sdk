@@ -66,6 +66,11 @@ public class AnthropicModel implements Model {
 
         String system = systemPrompt.isEmpty() ? null : systemPrompt.toString();
 
+        AnthropicDto.Thinking thinking = null;
+        if (settings != null && settings.thinking() != null && settings.thinking().enabled()) {
+            thinking = AnthropicDto.Thinking.enabled(settings.thinking().budgetTokens());
+        }
+
         return new AnthropicDto.Request(
             modelId,
             maxTokens,
@@ -74,7 +79,8 @@ public class AnthropicModel implements Model {
             stream ? Boolean.TRUE : null,
             tools,
             settings != null ? settings.temperature() : null,
-            settings != null ? settings.topP() : null
+            settings != null ? settings.topP() : null,
+            thinking
         );
     }
 

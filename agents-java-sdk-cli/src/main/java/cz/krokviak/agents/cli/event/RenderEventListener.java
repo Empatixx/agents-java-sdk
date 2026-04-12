@@ -49,6 +49,9 @@ public final class RenderEventListener {
             case AgentEvent.ResponseDelta e ->
                 renderer.printTextDelta(e.text());
             case AgentEvent.ResponseDone _ -> renderer.println("");
+            case AgentEvent.ThinkingDelta e ->
+                renderer.printTextDelta("\033[2;3m" + e.text() + "\033[0m");
+            case AgentEvent.ThinkingDone _ -> renderer.println("");
             case AgentEvent.SpinnerStart e ->
                 renderer.startSpinner(e.message());
             case AgentEvent.SpinnerStop _ ->

@@ -26,6 +26,10 @@ public interface AgentEvent {
     record ResponseDelta(String text) implements AgentEvent {}
     record ResponseDone(int inputTokens, int outputTokens) implements AgentEvent {}
 
+    // --- Extended thinking (visible-reasoning preamble, Anthropic claude-4+ only) ---
+    record ThinkingDelta(String text) implements AgentEvent {}
+    record ThinkingDone() implements AgentEvent {}
+
     // --- Notifications ---
     record TaskNotification(String taskId, String description, String status, String summary) implements AgentEvent {}
     record MailboxMessage(String sender, String content) implements AgentEvent {}

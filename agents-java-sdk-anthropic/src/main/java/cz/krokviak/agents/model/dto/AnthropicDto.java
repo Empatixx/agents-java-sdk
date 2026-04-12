@@ -20,8 +20,19 @@ public final class AnthropicDto {
         @JsonProperty("stream") Boolean stream,
         @JsonProperty("tools") List<Tool> tools,
         @JsonProperty("temperature") Double temperature,
-        @JsonProperty("top_p") Double topP
+        @JsonProperty("top_p") Double topP,
+        @JsonProperty("thinking") Thinking thinking
     ) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Thinking(
+        @JsonProperty("type") String type,
+        @JsonProperty("budget_tokens") int budgetTokens
+    ) {
+        public static Thinking enabled(int budgetTokens) {
+            return new Thinking("enabled", budgetTokens);
+        }
+    }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Message(
@@ -136,7 +147,8 @@ public final class AnthropicDto {
         public record Delta(
             @JsonProperty("type") String type,
             @JsonProperty("text") String text,
-            @JsonProperty("partial_json") String partialJson
+            @JsonProperty("partial_json") String partialJson,
+            @JsonProperty("thinking") String thinking
         ) {}
     }
 

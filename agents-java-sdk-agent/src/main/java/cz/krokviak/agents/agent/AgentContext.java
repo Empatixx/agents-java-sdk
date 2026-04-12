@@ -37,7 +37,7 @@ public class AgentContext {
     private final MailboxManager mailboxManager;
     private volatile Path workingDirectory;
     private final String systemPrompt;
-    private final ModelSettings modelSettings;
+    private volatile ModelSettings modelSettings;
 
     private Model model;
     private String modelId;
@@ -92,6 +92,8 @@ public class AgentContext {
     public void setWorkingDirectory(Path p) { this.workingDirectory = p; }
     public String systemPrompt() { return systemPrompt; }
     public ModelSettings modelSettings() { return modelSettings; }
+    /** Replace model settings at runtime (used by e.g. {@code /thinking} command). */
+    public void setModelSettings(ModelSettings newSettings) { this.modelSettings = newSettings; }
     public Model model() { return model; }
     public String modelId() { return modelId; }
     public String apiKey() { return apiKey; }

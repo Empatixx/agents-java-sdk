@@ -68,13 +68,22 @@ public class AgentRunner {
                 bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStart("Thinking..."));
                 boolean firstEvent = true;
 
+                boolean thinkingActive = false;
                 try (ModelResponseStream stream = ctx.model().callStreamed(llmCtx, ctx.modelSettings())) {
                     for (ModelResponseStream.Event event : stream) {
                         if (firstEvent) { bus.emit(new cz.krokviak.agents.api.event.AgentEvent.SpinnerStop()); firstEvent = false; }
                         switch (event) {
                             case ModelResponseStream.Event.TextDelta td -> {
+                                if (thinkingActive) {
+                                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDone());
+                                    thinkingActive = false;
+                                }
                                 bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ResponseDelta(td.delta()));
                                 collector.onTextDelta(td.delta());
+                            }
+                            case ModelResponseStream.Event.ThinkingDelta thd -> {
+                                thinkingActive = true;
+                                bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDelta(thd.delta()));
                             }
                             case ModelResponseStream.Event.ToolCallDelta tcd -> {
                                 collector.onToolCallDelta(tcd.toolCallId(), tcd.name(), tcd.argumentsDelta());
@@ -82,6 +91,10 @@ public class AgentRunner {
                                 streamingExecutor.onToolCallDelta(tcd.toolCallId(), tcd.name(), tcd.argumentsDelta());
                             }
                             case ModelResponseStream.Event.Done done -> {
+                                if (thinkingActive) {
+                                    bus.emit(new cz.krokviak.agents.api.event.AgentEvent.ThinkingDone());
+                                    thinkingActive = false;
+                                }
                                 collector.onDone(done.fullResponse());
                                 // Mark all tool calls as complete for streaming executor
                                 for (var tc : collector.toolCalls()) {
