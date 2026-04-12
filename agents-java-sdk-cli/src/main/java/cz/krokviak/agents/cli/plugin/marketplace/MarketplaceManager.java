@@ -100,7 +100,7 @@ public class MarketplaceManager {
 
         Path mktDir = marketplacesDir.resolve(sanitize(name));
         if (Files.isDirectory(mktDir)) {
-            deleteRecursive(mktDir);
+            FileOps.deleteRecursive(mktDir);
         }
     }
 
@@ -185,12 +185,12 @@ public class MarketplaceManager {
             if (!Files.isDirectory(pluginSource)) {
                 throw new IOException("Plugin source not found: " + pluginSource);
             }
-            if (Files.isDirectory(cacheTarget)) deleteRecursive(cacheTarget);
-            copyRecursive(pluginSource, cacheTarget);
+            if (Files.isDirectory(cacheTarget)) FileOps.deleteRecursive(cacheTarget);
+            FileOps.copyRecursive(pluginSource, cacheTarget);
         } else if (found.source() != null && found.source().startsWith("git:")) {
             // Remote git source — clone
             String gitUrl = found.source().substring(4);
-            if (Files.isDirectory(cacheTarget)) deleteRecursive(cacheTarget);
+            if (Files.isDirectory(cacheTarget)) FileOps.deleteRecursive(cacheTarget);
             GitOps.clone(gitUrl, null, cacheTarget);
             version = GitOps.headSha(cacheTarget);
         } else {
@@ -258,7 +258,7 @@ public class MarketplaceManager {
         if (info != null) {
             String path = (String) info.get("installPath");
             if (path != null && Files.isDirectory(Path.of(path))) {
-                deleteRecursive(Path.of(path));
+                FileOps.deleteRecursive(Path.of(path));
             }
         }
         installed.remove(pluginId);
@@ -510,26 +510,4 @@ public class MarketplaceManager {
         }
     }
 
-    private static void copyRecursive(Path source, Path target) throws IOException {
-        Files.createDirectories(target);
-        try (var stream = Files.walk(source)) {
-            for (var path : stream.toList()) {
-                Path dest = target.resolve(source.relativize(path));
-                if (Files.isDirectory(path)) {
-                    Files.createDirectories(dest);
-                } else {
-                    Files.copy(path, dest, StandardCopyOption.REPLACE_EXISTING);
-                }
-            }
-        }
-    }
-
-    private static void deleteRecursive(Path dir) throws IOException {
-        if (!Files.isDirectory(dir)) return;
-        try (var stream = Files.walk(dir)) {
-            stream.sorted(Comparator.reverseOrder()).forEach(p -> {
-                try { Files.delete(p); } catch (IOException ignored) {}
-            });
-        }
-    }
 }
