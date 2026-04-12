@@ -25,4 +25,10 @@ public final class AgentDefaults {
     public static final int HISTORY_HARD_CAP = 5_000;
     /** Threshold at which we emit a one-time warning about unusually large history. */
     public static final int HISTORY_WARN_THRESHOLD = 2_500;
+
+    /** Default max output tokens for a sub-agent turn. */
+    public static final int SUBAGENT_MAX_TOKENS = 8_192;
+    /** Max characters preserved when truncating result / notification previews. */
+    public static final int PREVIEW_MAX_CHARS = 200;
 }
+

@@ -82,7 +82,7 @@ public class AgentSpawner {
             String result = runLoop(name, prompt, tools, model, progress, agent, maxTurns);
             agent.setStatus(AgentStatus.COMPLETED);
             ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentCompleted(name,
-                cz.krokviak.agents.util.StringUtils.truncate(result, 200, "")));
+                cz.krokviak.agents.util.StringUtils.truncate(result, cz.krokviak.agents.agent.AgentDefaults.PREVIEW_MAX_CHARS, "")));
             fireSubagentStop(name, AgentStatus.COMPLETED, result, false);
             registry.remove(name);
             return result;
@@ -122,7 +122,7 @@ public class AgentSpawner {
                 task.complete(result);
                 taskManager.addNotification(new TaskManager.TaskNotification(
                     taskId, name, TaskState.Status.COMPLETED,
-                    cz.krokviak.agents.util.StringUtils.truncate(result, 200)));
+                    cz.krokviak.agents.util.StringUtils.truncate(result, cz.krokviak.agents.agent.AgentDefaults.PREVIEW_MAX_CHARS)));
                 fireSubagentStop(name, AgentStatus.COMPLETED, result, true);
             } catch (Exception e) {
                 agent.setStatus(AgentStatus.FAILED);
@@ -192,7 +192,7 @@ public class AgentSpawner {
             // sub-agents live, not just their final result.
             var bus = ctx.eventBus();
             var collector = new cz.krokviak.agents.agent.engine.StreamCollector();
-            var settings = ModelSettings.builder().maxTokens(8192).build();
+            var settings = ModelSettings.builder().maxTokens(cz.krokviak.agents.agent.AgentDefaults.SUBAGENT_MAX_TOKENS).build();
             var llmCtx = new LlmContext(systemPrompt, List.copyOf(history), defs, null, settings);
 
             try (cz.krokviak.agents.model.ModelResponseStream stream = model.callStreamed(llmCtx, settings)) {
