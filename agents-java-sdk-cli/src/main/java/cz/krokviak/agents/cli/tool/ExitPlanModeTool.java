@@ -34,7 +34,7 @@ public class ExitPlanModeTool implements ExecutableTool {
         }
 
         if (planContent == null || planContent.isBlank()) {
-            ctx.setPlanMode(false);
+            ctx.agent().setPlanMode(false);
             return ToolOutput.text("Plan mode off. No plan found.");
         }
 
@@ -59,7 +59,7 @@ public class ExitPlanModeTool implements ExecutableTool {
 
                 switch (selected) {
                     case 0 -> {
-                        ctx.setPlanMode(false);
+                        ctx.agent().setPlanMode(false);
                         return ToolOutput.text("User APPROVED the plan. Implement it now.\n\nPlan:\n" + planContent);
                     }
                     case 1 -> {
@@ -69,7 +69,7 @@ public class ExitPlanModeTool implements ExecutableTool {
                             "Then update the plan and call exit_plan_mode again.");
                     }
                     default -> {
-                        ctx.setPlanMode(false);
+                        ctx.agent().setPlanMode(false);
                         return ToolOutput.text("Plan cancelled by user.");
                     }
                 }
@@ -77,7 +77,7 @@ public class ExitPlanModeTool implements ExecutableTool {
         }
 
         // Fallback: no TUI renderer
-        ctx.setPlanMode(false);
+        ctx.agent().setPlanMode(false);
         ctx.output().println("Type 'ok' to approve or provide feedback.");
         return ToolOutput.text("Plan shown. Wait for user response.");
     }

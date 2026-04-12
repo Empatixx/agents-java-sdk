@@ -30,7 +30,7 @@ public class EnterPlanModeTool implements ExecutableTool {
     @Override
     public ToolOutput execute(ToolArgs args, ToolContext<?> toolCtx) {
         String reason = args.get("reason", String.class);
-        ctx.setPlanMode(true);
+        ctx.agent().setPlanMode(true);
 
         String slug;
         try {
