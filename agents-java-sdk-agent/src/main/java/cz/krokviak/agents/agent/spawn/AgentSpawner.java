@@ -62,7 +62,8 @@ public class AgentSpawner {
         try {
             String result = runLoop(name, prompt, tools, model, progress, agent, maxTurns);
             agent.setStatus(AgentStatus.COMPLETED);
-            ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentCompleted(name, result.length() > 200 ? result.substring(0, 200) : result));
+            ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.AgentCompleted(name,
+                cz.krokviak.agents.util.StringUtils.truncate(result, 200, "")));
             fireSubagentStop(name, AgentStatus.COMPLETED, result, false);
             registry.remove(name);
             return result;
@@ -102,7 +103,7 @@ public class AgentSpawner {
                 task.complete(result);
                 taskManager.addNotification(new TaskManager.TaskNotification(
                     taskId, name, TaskState.Status.COMPLETED,
-                    result.length() > 200 ? result.substring(0, 200) + "..." : result));
+                    cz.krokviak.agents.util.StringUtils.truncate(result, 200)));
                 fireSubagentStop(name, AgentStatus.COMPLETED, result, true);
             } catch (Exception e) {
                 agent.setStatus(AgentStatus.FAILED);

@@ -20,7 +20,7 @@ public final class PlainRenderer implements Renderer {
         if (args != null) {
             for (var e : args.entrySet()) {
                 String v = String.valueOf(e.getValue());
-                System.out.println("  " + e.getKey() + ": " + (v.length() > 200 ? v.substring(0, 200) + "..." : v));
+                System.out.println("  " + e.getKey() + ": " + cz.krokviak.agents.util.StringUtils.truncate(v, 200));
             }
         }
     }
