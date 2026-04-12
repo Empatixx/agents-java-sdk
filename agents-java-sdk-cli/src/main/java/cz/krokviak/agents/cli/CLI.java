@@ -88,7 +88,11 @@ public class CLI {
         } catch (Exception e) {
             log.warn( "Failed to init session storage", e);
         }
-        Session session = advancedSession;
+        // Wrap the persistent session with a BatchedSessionWriter so turn-loop
+        // writes never block the main thread on disk I/O.
+        Session session = advancedSession != null
+            ? new cz.krokviak.agents.session.BatchedSessionWriter(advancedSession)
+            : null;
 
         // Skills
         SkillRegistry skillRegistry = new SkillRegistry();
