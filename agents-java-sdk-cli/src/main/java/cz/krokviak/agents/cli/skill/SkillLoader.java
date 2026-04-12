@@ -80,44 +80,16 @@ public final class SkillLoader {
     }
 
     /**
-     * Parse YAML frontmatter + markdown body. Returns null if content is blank.
+     * Parse YAML frontmatter + markdown body via {@link cz.krokviak.agents.agent.util.FrontmatterParser}.
+     * Returns {@code null} if content is blank.
      */
     static Skill parseSkill(String content, String sourcePath) {
-        if (content == null || content.isBlank()) return null;
-        Map<String, String> metadata = new LinkedHashMap<>();
-        String body;
+        var parsed = cz.krokviak.agents.agent.util.FrontmatterParser.parse(content);
+        if (parsed == null) return null;
 
-        if (content.startsWith("---")) {
-            int end = content.indexOf("\n---", 3);
-            if (end != -1) {
-                String yamlBlock = content.substring(3, end).strip();
-                body = content.substring(end + 4).stripLeading();
-                for (String line : yamlBlock.split("\n")) {
-                    int colon = line.indexOf(':');
-                    if (colon > 0) {
-                        String key = line.substring(0, colon).strip();
-                        String val = line.substring(colon + 1).strip();
-                        // strip surrounding quotes if present
-                        if (val.length() >= 2 && val.startsWith("\"") && val.endsWith("\"")) {
-                            val = val.substring(1, val.length() - 1);
-                        } else if (val.length() >= 2 && val.startsWith("'") && val.endsWith("'")) {
-                            val = val.substring(1, val.length() - 1);
-                        }
-                        metadata.put(key, val);
-                    }
-                }
-            } else {
-                body = content;
-            }
-        } else {
-            body = content;
-        }
-
-        // Derive name from metadata or source path
-        String name = metadata.getOrDefault("name", deriveNameFromPath(sourcePath));
-        String description = metadata.getOrDefault("description", "");
-
-        return new Skill(name, description, body, Collections.unmodifiableMap(metadata), sourcePath);
+        String name = parsed.metadata().getOrDefault("name", deriveNameFromPath(sourcePath));
+        String description = parsed.metadata().getOrDefault("description", "");
+        return new Skill(name, description, parsed.body(), parsed.metadata(), sourcePath);
     }
 
     private static String deriveNameFromPath(String sourcePath) {

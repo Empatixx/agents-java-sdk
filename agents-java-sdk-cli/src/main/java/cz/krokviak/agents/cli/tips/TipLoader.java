@@ -69,39 +69,13 @@ public final class TipLoader {
         return parse(raw, p.toString());
     }
 
-    /** YAML frontmatter + body parser. Blank input returns null. */
+    /** YAML frontmatter + body parser, delegates to shared {@link cz.krokviak.agents.agent.util.FrontmatterParser}. */
     static Tip parse(String content, String sourcePath) {
-        if (content == null || content.isBlank()) return null;
-        Map<String, String> metadata = new LinkedHashMap<>();
-        String body;
-
-        if (content.startsWith("---")) {
-            int end = content.indexOf("\n---", 3);
-            if (end != -1) {
-                String yaml = content.substring(3, end).strip();
-                body = content.substring(end + 4).stripLeading();
-                for (String line : yaml.split("\n")) {
-                    int colon = line.indexOf(':');
-                    if (colon > 0) {
-                        String key = line.substring(0, colon).strip();
-                        String val = line.substring(colon + 1).strip();
-                        if (val.length() >= 2 && val.startsWith("\"") && val.endsWith("\""))
-                            val = val.substring(1, val.length() - 1);
-                        else if (val.length() >= 2 && val.startsWith("'") && val.endsWith("'"))
-                            val = val.substring(1, val.length() - 1);
-                        metadata.put(key, val);
-                    }
-                }
-            } else {
-                body = content;
-            }
-        } else {
-            body = content;
-        }
-
-        String id = metadata.getOrDefault("id", deriveIdFromPath(sourcePath));
-        String category = metadata.getOrDefault("category", "");
-        String text = body.strip();
+        var parsed = cz.krokviak.agents.agent.util.FrontmatterParser.parse(content);
+        if (parsed == null) return null;
+        String id = parsed.metadata().getOrDefault("id", deriveIdFromPath(sourcePath));
+        String category = parsed.metadata().getOrDefault("category", "");
+        String text = parsed.body().strip();
         if (text.isBlank()) return null;
         return new Tip(id, text, category);
     }
