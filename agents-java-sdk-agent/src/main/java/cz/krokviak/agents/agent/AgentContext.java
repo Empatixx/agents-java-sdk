@@ -40,6 +40,7 @@ public class AgentContext {
     private volatile ModelSettings modelSettings;
 
     private Model model;
+    private volatile Model summaryModel;
     private String modelId;
     private String apiKey;
     private String baseUrl;
@@ -127,6 +128,17 @@ public class AgentContext {
 
     public void setAgent(AgentService agent) { this.agent = agent; }
     public AgentService agent() { return agent; }
+
+    /**
+     * Optional cheap/fast secondary model used for short summaries (tool-batch
+     * labels, periodic agent progress lines). When unset, features that depend
+     * on it fall back to the main {@link #model()}. The engine never hardcodes
+     * a specific model id here — whoever wires this context chooses the model
+     * (OpenAI, Anthropic, local, whatever).
+     */
+    public void setSummaryModel(Model m) { this.summaryModel = m; }
+    public Model summaryModel() { return summaryModel; }
+    public Model summaryModelOrMain() { return summaryModel != null ? summaryModel : model; }
 
     /**
      * Dynamic system-prompt addendum appended to {@link #systemPrompt()} on every

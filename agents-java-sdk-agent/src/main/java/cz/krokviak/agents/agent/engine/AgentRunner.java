@@ -152,6 +152,9 @@ public class AgentRunner {
                 streamingExecutor.collectResults(toolCalls, newItems);
                 streamingExecutor.shutdown();
 
+                // Tool-batch label: one short summary per assistant turn when any tools ran.
+                fireToolBatchSummary(toolCalls);
+
                 // Token budget check — ask user to extend
                 if (tokenBudget.isOverBudget()) {
                     if (!promptExtendBudget()) break;
@@ -214,6 +217,36 @@ public class AgentRunner {
                 log.warn("Failed to save session", e);
             }
         }
+    }
+
+    private static final String TOOL_BATCH_SYSTEM_PROMPT = """
+        You write a 3–5 word present-tense label for a just-completed batch of tool calls.
+        Name the file, function, or command — never the branch. Output the label only,
+        no quotes, no trailing punctuation.
+        Good: Reading runAgent.ts
+        Good: Fixing null check in validate.ts
+        Good: Running auth module tests
+        Bad (past tense): Analyzed the branch diff
+        Bad (too vague): Investigating the issue""";
+
+    /** Fire-and-forget summary of the turn's tool batch on a virtual thread. */
+    private void fireToolBatchSummary(List<InputItem.ToolCall> toolCalls) {
+        if (toolCalls == null || toolCalls.isEmpty()) return;
+        if (ctx.summaryModelOrMain() == null) return;
+        // Snapshot the call names/args while the caller still holds them.
+        StringBuilder user = new StringBuilder("Tool calls in this turn:\n");
+        for (InputItem.ToolCall tc : toolCalls) {
+            user.append("- ").append(tc.name());
+            if (tc.arguments() != null && !tc.arguments().isEmpty()) {
+                user.append(": ").append(tc.arguments());
+            }
+            user.append('\n');
+        }
+        Thread.ofVirtual().name("tool-batch-summary").start(() -> {
+            var svc = new cz.krokviak.agents.agent.summary.SummaryService(ctx);
+            svc.summarize(TOOL_BATCH_SYSTEM_PROMPT, user.toString(), 64).ifPresent(label ->
+                ctx.eventBus().emit(new cz.krokviak.agents.api.event.AgentEvent.ToolBatchSummary(label)));
+        });
     }
 
     private boolean promptExtendBudget() {

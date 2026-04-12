@@ -30,6 +30,9 @@ public interface AgentEvent {
     record ThinkingDelta(String text) implements AgentEvent {}
     record ThinkingDone() implements AgentEvent {}
 
+    /** Short 3–5 word label summarising the tools run in a just-completed turn. */
+    record ToolBatchSummary(String label) implements AgentEvent {}
+
     // --- Notifications ---
     record TaskNotification(String taskId, String description, String status, String summary) implements AgentEvent {}
     record MailboxMessage(String sender, String content) implements AgentEvent {}
